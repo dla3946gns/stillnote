@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+*.log
+*.tar.gz
+__pycache__/
+.sites-runtime/
+.sites-checkout/
+node_modules/

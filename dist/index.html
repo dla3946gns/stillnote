@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <meta name="description" content="생각나는 순간, 간단히 적어두는 메모 앱입니다.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23355449'/%3E%3Cpath d='M15 14h18M15 21h18M15 28h12M15 35h18' stroke='%23f7f5ed' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <title>메모 — 가볍게 적어두세요</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #282c28;
+      --muted: #8a8e86;
+      --line: #e9e8e1;
+      --paper: #fffefa;
+      --canvas: #f6f5f1;
+      --sidebar: #fbfaf7;
+      --green: #355449;
+      --green-soft: #eaf0eb;
+      --coral: #c6765d;
+      --shadow: 0 16px 50px rgba(39, 45, 38, .055);
+      font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-width: 320px; min-height: 100%; margin: 0; }
+    body { min-height: 100vh; background: var(--canvas); color: var(--ink); }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; max-width: 1600px; margin: 0 auto; background: var(--paper); box-shadow: var(--shadow); }
+    .sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 30px 20px 20px; border-right: 1px solid var(--line); background: var(--sidebar); }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px; }
+    .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--green); color: #fffdf5; }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .brand-name { font-size: 17px; font-weight: 720; letter-spacing: -.045em; }
+    .brand-caption { margin-top: 3px; color: var(--muted); font-size: 11px; letter-spacing: .005em; }
+    .sidebar-heading { display: flex; align-items: center; justify-content: space-between; margin: 40px 5px 12px; }
+    .sidebar-heading h1 { margin: 0; font-size: 13px; font-weight: 680; letter-spacing: -.02em; }
+    .note-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .note-filter { margin-left: auto; margin-right: 8px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: #7e837b; cursor: pointer; font-size: 11px; }
+    .note-filter[aria-pressed="true"] { border-color: #cdd8ce; background: var(--green-soft); color: var(--green); }
+    .new-note { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; height: 44px; border: 0; border-radius: 12px; background: var(--green); color: #fffefa; cursor: pointer; font-size: 13px; font-weight: 650; transition: background .18s, transform .18s; }
+    .new-note:hover { background: #29463c; transform: translateY(-1px); }
+    .new-note:active { transform: translateY(0); }
+    .new-note svg { width: 16px; height: 16px; }
+    .search-box { display: flex; align-items: center; gap: 9px; height: 40px; margin-top: 13px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); color: #92978e; transition: border-color .15s, box-shadow .15s; }
+    .search-box:focus-within { border-color: #9aafa2; box-shadow: 0 0 0 3px rgba(83, 116, 95, .1); }
+    .search-box svg { flex: 0 0 15px; width: 15px; height: 15px; }
+    .search-box input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 12px; }
+    .search-box input::placeholder { color: #a4a79f; }
+    .search-shortcut { flex: 0 0 auto; padding: 1px 5px; border: 1px solid var(--line); border-radius: 5px; color: #a4a79f; font-size: 10px; line-height: 1.4; }
+    .export-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: #667065; cursor: pointer; font-size: 12px; transition: background .15s, border-color .15s; }
+    .export-button:hover:not(:disabled) { border-color: #cdd8ce; background: #f7f8f4; }
+    .export-button:disabled { color: #a8aaa3; cursor: not-allowed; }
+    .export-button svg { width: 15px; height: 15px; }
+    .notes-list { display: flex; flex: 1; flex-direction: column; gap: 4px; margin: 17px -7px 0; overflow-y: auto; }
+    .note-row { display: block; width: 100%; padding: 13px 13px 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; text-align: left; cursor: pointer; transition: background .15s, border-color .15s; }
+    .note-row:hover { background: #f4f3ee; }
+    .note-row.selected { border-color: #e4e9e3; background: var(--green-soft); }
+    .note-row-title { display: block; overflow: hidden; color: #363a35; font-size: 13px; font-weight: 630; text-overflow: ellipsis; white-space: nowrap; }
+    .note-row-excerpt { display: block; overflow: hidden; margin-top: 6px; color: #7e837b; font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+    .note-row-date { display: block; margin-top: 9px; color: #a1a49d; font-size: 10px; letter-spacing: .01em; }
+    .list-empty { margin: 7px 8px; padding: 18px 13px; border: 1px dashed #dfded7; border-radius: 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .list-empty-action { margin-top: 8px; padding: 0; border: 0; background: transparent; color: var(--green); cursor: pointer; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; }
+    .sidebar-foot { display: flex; align-items: flex-start; gap: 9px; margin-top: auto; padding: 17px 7px 0; border-top: 1px solid var(--line); color: #888c83; font-size: 11px; line-height: 1.5; }
+    .sidebar-foot svg { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 1px; color: var(--green); }
+    .workspace { display: flex; min-width: 0; flex-direction: column; min-height: 100vh; padding: 30px clamp(24px, 5vw, 76px) 34px; background: var(--paper); }
+    .workspace-top { display: flex; align-items: center; justify-content: space-between; min-height: 34px; }
+    .workspace-label { display: flex; align-items: center; gap: 8px; color: #7f847c; font-size: 12px; }
+    .workspace-label svg { width: 15px; height: 15px; color: #999d94; }
+    .save-state { display: inline-flex; align-items: center; gap: 6px; color: #969a92; font-size: 11px; }
+    .save-dot { width: 6px; height: 6px; border-radius: 50%; background: #72a382; }
+    .save-error { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f0dfd9; background: #fff8f5; color: #a45d48; font-size: 12px; }
+    .save-error[hidden] { display: none; }
+    .save-retry { flex-shrink: 0; padding: 6px 9px; border: 1px solid #e5c9be; border-radius: 7px; background: var(--paper); color: inherit; cursor: pointer; font-size: 12px; }
+    .editor-wrap { display: flex; flex: 1; justify-content: center; padding: clamp(54px, 11vh, 104px) 0 55px; }
+    .editor { width: min(100%, 760px); }
+    .editor-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; min-height: 34px; color: #a0a39c; font-size: 11px; letter-spacing: .015em; }
+    .editor-meta-left { display: flex; align-items: center; gap: 9px; }
+    .meta-separator { width: 3px; height: 3px; border-radius: 50%; background: #c6c8c0; }
+    .icon-button { display: inline-grid; width: 34px; height: 34px; place-items: center; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #989b93; cursor: pointer; transition: all .15s; }
+    .icon-button:hover { border-color: #f0dfd9; background: #fff8f5; color: var(--coral); }
+    .icon-button.is-pinned, .icon-button.is-pinned:hover { border-color: #dbe4dc; background: var(--green-soft); color: var(--green); }
+    .icon-button svg { width: 16px; height: 16px; }
+    .editor-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+    .pin-indicator { display: inline-block; width: 12px; height: 12px; margin-right: 5px; color: var(--green); vertical-align: -1px; }
+    .note-title { display: block; width: 100%; margin: 28px 0 13px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: clamp(27px, 3.4vw, 39px); font-weight: 680; letter-spacing: -.055em; line-height: 1.25; }
+    .note-title::placeholder { color: #c5c7bf; }
+    .title-count { margin: -7px 0 13px; color: #a1a49d; font-size: 11px; text-align: right; }
+    .note-body { display: block; width: 100%; min-height: 44vh; padding: 0; resize: vertical; border: 0; outline: 0; background: transparent; color: #555a53; font-size: 15px; font-weight: 400; line-height: 1.9; letter-spacing: -.01em; }
+    .note-body::placeholder { color: #b6b9b1; }
+    .editor-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 15px; border-top: 1px solid #f0efe9; color: #a1a49d; font-size: 11px; }
+    .word-count { font-variant-numeric: tabular-nums; }
+    .local-hint { display: flex; align-items: center; gap: 7px; }
+    .local-hint svg { width: 13px; height: 13px; }
+    .empty-editor { display: grid; min-height: 55vh; place-content: center; justify-items: center; text-align: center; }
+    .empty-illustration { display: grid; width: 76px; height: 76px; place-items: center; border: 1px solid #ebeae4; border-radius: 25px; background: #f8f7f2; color: #8a9b8b; }
+    .empty-illustration svg { width: 30px; height: 30px; }
+    .empty-editor h2 { margin: 22px 0 8px; font-size: 20px; font-weight: 650; letter-spacing: -.04em; }
+    .empty-editor p { margin: 0; color: #8e928a; font-size: 13px; line-height: 1.7; }
+    .empty-editor .new-note { width: auto; min-width: 132px; margin-top: 23px; padding: 0 17px; }
+    .mobile-back { display: none; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 5; display: flex; align-items: center; gap: 14px; padding: 11px 15px; border: 1px solid #e7e9e3; border-radius: 12px; background: #fffefa; box-shadow: 0 8px 24px rgba(30, 39, 32, .09); color: #4c5b4f; font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+    .toast.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .toast-action { padding: 0; border: 0; background: transparent; color: var(--green); cursor: pointer; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #779182; outline-offset: 4px; }
+    @media (min-width: 1200px) { .app { margin: 22px auto; min-height: calc(100vh - 44px); border: 1px solid var(--line); border-radius: 17px; overflow: hidden; } .sidebar, .workspace { min-height: calc(100vh - 44px); } }
+    @media (max-width: 760px) {
+      .app { display: block; min-height: 100dvh; }
+      .sidebar { min-height: 100dvh; padding: 24px 18px 17px; border-right: 0; }
+      .sidebar-heading { margin-top: 31px; }
+      .workspace { display: none; min-height: 100dvh; padding: 20px 22px 27px; }
+      .app.is-editor .sidebar { display: none; }
+      .app.is-editor .workspace { display: flex; }
+      .mobile-back { display: inline-flex; align-items: center; gap: 6px; margin-left: -8px; padding: 7px 9px; border: 0; border-radius: 9px; background: transparent; color: #737970; cursor: pointer; font-size: 12px; }
+      .mobile-back svg { width: 15px; height: 15px; }
+      .workspace-label { display: none; }
+      .editor-wrap { padding: 49px 0 35px; }
+      .note-title { margin-top: 23px; font-size: 29px; }
+      .note-body { min-height: 55vh; font-size: 15px; }
+      .editor-bottom { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="save-error" id="saveError" role="status" aria-live="polite" hidden><span>변경 내용을 저장하지 못했어요.</span><button class="save-retry" type="button" id="retrySaveButton">다시 저장</button></div>
+  <main class="app" id="app">
+    <aside class="sidebar" aria-label="메모 목록">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6.5h12M6 11.5h12M6 16.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <div><div class="brand-name">메모</div><div class="brand-caption">가볍게 적어두세요</div></div>
+      </div>
+      <div class="sidebar-heading"><h1>내 메모</h1><button class="note-filter" type="button" id="pinnedFilterButton" aria-label="고정 메모만 보기" aria-pressed="false">고정만 보기</button><span class="note-count" id="noteCount">0</span></div>
+      <button class="new-note" type="button" id="newNoteButton" title="새 메모 (N)" aria-keyshortcuts="N">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        새 메모
+      </button>
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" stroke="currentColor" stroke-width="1.6"/><path d="m15.5 15.5 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="search" placeholder="제목과 내용 검색" aria-label="메모 검색" aria-keyshortcuts="/" title="검색 단축키: /" autocomplete="off">
+        <kbd class="search-shortcut" aria-hidden="true">/</kbd>
+      </label>
+      <button class="export-button" type="button" id="exportButton" disabled>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.75v11.5m0 0 4-4m-4 4-4-4M5 16.75v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        메모 백업 다운로드
+      </button>
+      <button class="export-button" type="button" id="importButton">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 14.75V3.25m0 0-4 4m4-4 4 4M5 16.25v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        백업 불러오기
+      </button>
+      <input id="importInput" type="file" accept="application/json,.json" aria-label="메모 백업 파일 선택" hidden>
+      <div class="notes-list" id="notesList" role="list" aria-label="메모 목록" aria-description="위아래 방향키로 이동하고 Enter로 메모를 열 수 있어요. Home은 첫 메모, End는 마지막 메모로 이동해요."></div>
+      <div class="sidebar-foot">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>메모는 이 브라우저에만 저장됩니다.</span>
+      </div>
+    </aside>
+    <section class="workspace" aria-label="메모 편집">
+      <div class="workspace-top">
+        <button class="mobile-back" type="button" id="backButton"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 5-7 7 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>목록</button>
+        <div class="workspace-label"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.75h7l4.25 4.3v12.2H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><path d="M14 4v4h4M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>메모장</div>
+        <div class="save-state" id="saveState" aria-live="polite"><span class="save-dot"></span><span>자동 저장</span></div>
+      </div>
+      <div class="editor-wrap" id="editorWrap"></div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button class="toast-action" id="toastAction" type="button" hidden>실행 취소</button></div>
+  <script>
+    (() => {
+      const STORAGE_KEY = 'simple-notes-v1';
+      const app = document.getElementById('app');
+      const list = document.getElementById('notesList');
+      const count = document.getElementById('noteCount');
+      const searchInput = document.getElementById('searchInput');
+      const pinnedFilterButton = document.getElementById('pinnedFilterButton');
+      const exportButton = document.getElementById('exportButton');
+      const importButton = document.getElementById('importButton');
+      const importInput = document.getElementById('importInput');
+      const editorWrap = document.getElementById('editorWrap');
+      const saveState = document.getElementById('saveState');
+      const saveError = document.getElementById('saveError');
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastAction = document.getElementById('toastAction');
+      let notes = [];
+      let activeId = null;
+      let searchQuery = '';
+      let pinnedOnly = false;
+      let saveFailed = false;
+      let toastTimer;
+
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (Array.isArray(stored)) notes = stored.filter(note => note && typeof note.id === 'string');
+      } catch (_) {
+        notes = [];
+      }
+
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+      const activeNote = () => notes.find(note => note.id === activeId);
+      const dateLabel = value => {
+        const date = new Date(value || Date.now());
+        if (Number.isNaN(date.getTime())) return '방금 전';
+        const today = new Date();
+        const sameDay = today.toDateString() === date.toDateString();
+        if (sameDay) return new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit' }).format(date);
+        return new Intl.DateTimeFormat('ko-KR', { month: 'short', day: 'numeric' }).format(date);
+      };
+      const noteTitle = note => note.title.trim() || note.body.trim().split(/\r?\n/)[0].slice(0, 32) || '제목 없는 메모';
+      const noteExcerpt = note => note.body.trim().replace(/\s+/g, ' ') || '내용 없음';
+      const renderSaveState = (label = '저장됨') => {
+        saveError.hidden = !saveFailed;
+        saveState.innerHTML = saveFailed
+          ? '<span style="color:#c6765d">저장하지 못했어요</span>'
+          : `<span class="save-dot"></span><span>${label}</span>`;
+      };
+      const persist = () => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+          saveFailed = false;
+          renderSaveState();
+          return true;
+        } catch (_) {
+          saveFailed = true;
+          renderSaveState();
+          showToast('브라우저 저장 공간이 부족해요.');
+          return false;
+        }
+      };
+      const renderList = () => {
+        const sorted = [...notes].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt - a.updatedAt);
+        const query = searchQuery.trim().toLocaleLowerCase();
+        const filtered = sorted.filter(note => (!pinnedOnly || note.pinned) && (!query || `${note.title}\n${note.body}`.toLocaleLowerCase().includes(query)));
+        count.textContent = query || pinnedOnly ? `${filtered.length} / ${notes.length}` : String(notes.length);
+        pinnedFilterButton.setAttribute('aria-pressed', String(pinnedOnly));
+        exportButton.disabled = notes.length === 0;
+        list.innerHTML = filtered.length ? filtered.map(note => `
+          <button class="note-row${note.id === activeId ? ' selected' : ''}" type="button" role="listitem" data-id="${escapeHtml(note.id)}" aria-current="${note.id === activeId ? 'true' : 'false'}">
+            <span class="note-row-title">${note.pinned ? '<svg class="pin-indicator" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15.5 4.5 4 4-3 1.5v4l-3 2-1.5-1.5L7 19l-2-2 4.5-5-1.5-1.5 2-3h4l1.5-3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}${escapeHtml(noteTitle(note))}</span>
+            <span class="note-row-excerpt">${escapeHtml(noteExcerpt(note))}</span>
+            <span class="note-row-date">${escapeHtml(dateLabel(note.updatedAt))}</span>
+          </button>`).join('') : notes.length
+            ? pinnedOnly
+              ? `<div class="list-empty" role="status">${query ? '검색 조건에 맞는 고정 메모가 없어요.' : '고정된 메모가 없어요.'}<br><button class="list-empty-action" type="button" data-action="show-all">전체 메모 보기</button></div>`
+              : '<div class="list-empty" role="status">검색 결과가 없어요.<br>다른 단어로 검색해 보세요.<br><button class="list-empty-action" type="button" data-action="clear-search">검색 지우기</button></div>'
+            : '<div class="list-empty">아직 메모가 없어요.<br>첫 메모를 적어보세요.</div>';
+      };
+      const renderEditor = () => {
+        const note = activeNote();
+        if (!note) {
+          editorWrap.innerHTML = `<div class="empty-editor">
+            <div class="empty-illustration" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M10 7h13a2 2 0 0 1 2 2v16H10a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.5"/><path d="M12 12h9M12 16h9M12 20h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+            <h2>생각을 적어두세요</h2><p>간단한 아이디어부터 잊기 쉬운 일까지,<br>필요한 만큼만 가볍게 기록해요.</p>
+            <button class="new-note" type="button" data-action="new" title="새 메모 (N)" aria-keyshortcuts="N"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>새 메모 쓰기</button>
+          </div>`;
+          renderSaveState('자동 저장');
+          return;
+        }
+        editorWrap.innerHTML = `<div class="editor">
+          <div class="editor-meta"><div class="editor-meta-left"><span>메모</span><span class="meta-separator"></span><span id="updatedLabel">${escapeHtml(dateLabel(note.updatedAt))}</span></div>
+            <div class="editor-actions">
+              <button class="icon-button${note.pinned ? ' is-pinned' : ''}" type="button" data-action="pin" aria-label="${note.pinned ? '고정 해제' : '메모 고정'}" title="${note.pinned ? '고정 해제' : '메모 고정'}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15.5 4.5 4 4-3 1.5v4l-3 2-1.5-1.5L7 19l-2-2 4.5-5-1.5-1.5 2-3h4l1.5-3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button class="icon-button" type="button" data-action="copy" aria-label="메모 내용 복사" title="메모 내용 복사"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+              <button class="icon-button" type="button" data-action="download" aria-label="텍스트 파일 다운로드" title="텍스트 파일 다운로드"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.75v11.5m0 0 4-4m-4 4-4-4M5 16.75v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button class="icon-button" type="button" data-action="duplicate" aria-label="메모 복제" title="메모 복제"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8.5" y="7.5" width="11" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M15.5 7.5V6a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2M14 13h4m-2-2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button class="icon-button" type="button" data-action="delete" aria-label="메모 삭제" title="메모 삭제"><svg viewBox="0 0 24 24" fill="none"><path d="M4.5 7h15M9.5 7V4.8h5V7M7.5 7l.7 12h7.6l.7-12M10 10.5v5M14 10.5v5" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+          <input class="note-title" id="noteTitle" type="text" maxlength="120" placeholder="제목 없음" aria-label="메모 제목" aria-describedby="titleCount" value="${escapeHtml(note.title)}" autocomplete="off">
+          <div class="title-count" id="titleCount">${note.title.length} / 120자</div>
+          <textarea class="note-body" id="noteBody" placeholder="여기에 메모를 적어보세요..." aria-label="메모 내용">${escapeHtml(note.body)}</textarea>
+          <div class="editor-bottom"><span class="word-count" id="wordCount">${note.body.length}자</span><span class="local-hint"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-3.5 7-9V5l-7-2-7 2v7c0 5.5 7 9 7 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>자동 저장 · 이 브라우저에만 보관</span></div>
+        </div>`;
+        renderSaveState();
+      };
+      const openNote = (id, focusTitle = false) => {
+        activeId = id;
+        app.classList.add('is-editor');
+        renderList();
+        renderEditor();
+        if (focusTitle) requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
+      };
+      const createNote = () => {
+        searchInput.value = '';
+        searchQuery = '';
+        pinnedOnly = false;
+        const now = Date.now();
+        const note = { id: (crypto.randomUUID ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`), title: '', body: '', createdAt: now, updatedAt: now, pinned: false };
+        notes.push(note);
+        activeId = note.id;
+        persist();
+        renderList();
+        renderEditor();
+        app.classList.add('is-editor');
+        requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
+      };
+      const showToast = (message, action = null) => {
+        toastMessage.textContent = message;
+        toastAction.hidden = !action;
+        toastAction.onclick = action;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('show');
+          toastAction.hidden = true;
+          toastAction.onclick = null;
+        }, action ? 5000 : 2200);
+      };
+      const exportNotes = () => {
+        if (!notes.length) return;
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `memo-backup-${date}.json`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('메모 백업 파일을 저장했어요.');
+      };
+      const importNotes = async () => {
+        const file = importInput.files?.[0];
+        if (!file) return;
+        try {
+          const imported = JSON.parse(await file.text());
+          const valid = Array.isArray(imported) && imported.every(note => note && typeof note.id === 'string' && typeof note.title === 'string' && typeof note.body === 'string' && Number.isFinite(note.createdAt) && Number.isFinite(note.updatedAt) && (note.pinned === undefined || typeof note.pinned === 'boolean'));
+          if (!valid) {
+            showToast('올바른 메모 백업 파일이 아니에요.');
+            return;
+          }
+          const ids = new Set(notes.map(note => note.id));
+          const additions = [];
+          for (const note of imported) {
+            if (ids.has(note.id)) continue;
+            ids.add(note.id);
+            additions.push({ id: note.id, title: note.title, body: note.body, createdAt: note.createdAt, updatedAt: note.updatedAt, ...(note.pinned ? { pinned: true } : {}) });
+          }
+          if (!additions.length) {
+            showToast('새 메모가 없어요. 기존 메모는 덮어쓰지 않았어요.');
+            return;
+          }
+          notes.push(...additions);
+          const addedIds = new Set(additions.map(note => note.id));
+          if (!persist()) {
+            notes = notes.filter(note => !addedIds.has(note.id));
+            renderList();
+            return;
+          }
+          if (!activeId) {
+            const latest = [...additions].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+            openNote(latest.id);
+          } else {
+            renderList();
+          }
+          showToast(`${additions.length}개 메모를 불러왔어요.${imported.length > additions.length ? ' 같은 ID의 메모는 건너뛰었어요.' : ''}`);
+        } catch (_) {
+          showToast('백업 파일을 읽을 수 없어요.');
+        } finally {
+          importInput.value = '';
+        }
+      };
+      const togglePinned = () => {
+        const note = activeNote();
+        if (!note) return;
+        note.pinned = !note.pinned;
+        persist();
+        renderList();
+        renderEditor();
+        showToast(note.pinned ? '메모를 고정했어요.' : '고정을 해제했어요.');
+      };
+      const copyActive = async () => {
+        const note = activeNote();
+        if (!note) return;
+        const content = [note.title, note.body].filter(value => value.trim()).join('\n\n');
+        if (!content) {
+          showToast('복사할 내용이 없어요.');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(content);
+          showToast('메모 내용을 복사했어요.');
+        } catch (_) {
+          showToast('클립보드에 복사할 수 없어요.');
+        }
+      };
+      const downloadActive = () => {
+        const note = activeNote();
+        if (!note) return;
+        const content = [note.title, note.body].filter(value => value.trim()).join('\n\n');
+        if (!content) {
+          showToast('다운로드할 내용이 없어요.');
+          return;
+        }
+        const filename = noteTitle(note).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').slice(0, 80).replace(/[.\s]+$/g, '') || '메모';
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `메모-${filename}.txt`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('메모를 텍스트 파일로 다운로드했어요.');
+      };
+      const duplicateActive = () => {
+        const note = activeNote();
+        if (!note) return;
+        const now = Date.now();
+        const suffix = ' (복사본)';
+        const duplicate = {
+          id: (crypto.randomUUID ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`),
+          title: `${noteTitle(note).slice(0, 120 - suffix.length)}${suffix}`,
+          body: note.body,
+          createdAt: now,
+          updatedAt: now,
+          pinned: false
+        };
+        notes.push(duplicate);
+        const previousActiveId = activeId;
+        activeId = duplicate.id;
+        if (!persist()) {
+          notes = notes.filter(item => item.id !== duplicate.id);
+          activeId = previousActiveId;
+          renderList();
+          renderEditor();
+          return;
+        }
+        if (pinnedOnly) {
+          pinnedOnly = false;
+          searchInput.value = '';
+          searchQuery = '';
+        }
+        renderList();
+        renderEditor();
+        app.classList.add('is-editor');
+        requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
+        showToast('메모를 복제했어요.');
+      };
+      const deleteActive = () => {
+        const note = activeNote();
+        if (!note || !window.confirm('이 메모를 삭제할까요?')) return;
+        const deletedIndex = notes.indexOf(note);
+        notes = notes.filter(item => item.id !== activeId);
+        activeId = [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id || null;
+        persist();
+        renderList();
+        renderEditor();
+        if (!activeId) app.classList.remove('is-editor');
+        showToast('메모를 삭제했어요.', () => {
+          const previousActiveId = activeId;
+          const restoreIndex = Math.min(deletedIndex, notes.length);
+          notes.splice(restoreIndex, 0, note);
+          activeId = note.id;
+          if (!persist()) {
+            notes.splice(restoreIndex, 1);
+            activeId = previousActiveId;
+            renderList();
+            renderEditor();
+            return;
+          }
+          renderList();
+          renderEditor();
+          app.classList.add('is-editor');
+          showToast('메모를 복원했어요.');
+        });
+      };
+      const saveEditor = () => {
+        const note = activeNote();
+        if (!note) return;
+        const titleField = document.getElementById('noteTitle');
+        const bodyField = document.getElementById('noteBody');
+        if (!titleField || !bodyField) return;
+        note.title = titleField.value;
+        note.body = bodyField.value;
+        note.updatedAt = Date.now();
+        const titleCount = document.getElementById('titleCount');
+        if (titleCount) titleCount.textContent = `${note.title.length} / 120자`;
+        const wordCount = document.getElementById('wordCount');
+        if (wordCount) wordCount.textContent = `${note.body.length}자`;
+        const updatedLabel = document.getElementById('updatedLabel');
+        if (updatedLabel) updatedLabel.textContent = dateLabel(note.updatedAt);
+        persist();
+        renderList();
+      };
+
+      document.getElementById('newNoteButton').addEventListener('click', createNote);
+      document.getElementById('retrySaveButton').addEventListener('click', () => {
+        if (!persist()) return;
+        showToast('변경 내용을 저장했어요.');
+        const bodyField = document.getElementById('noteBody');
+        if (bodyField?.getClientRects().length) bodyField.focus();
+        else searchInput.focus();
+      });
+      exportButton.addEventListener('click', exportNotes);
+      importButton.addEventListener('click', () => importInput.click());
+      importInput.addEventListener('change', importNotes);
+      pinnedFilterButton.addEventListener('click', () => {
+        pinnedOnly = !pinnedOnly;
+        renderList();
+      });
+      searchInput.addEventListener('input', () => {
+        searchQuery = searchInput.value;
+        renderList();
+      });
+      searchInput.addEventListener('keydown', event => {
+        if (event.isComposing) return;
+        if (event.key === 'ArrowDown') {
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          const firstResult = list.querySelector('.note-row[data-id]');
+          if (!firstResult) return;
+          event.preventDefault();
+          firstResult.focus();
+          return;
+        }
+        if (event.key !== 'Enter') return;
+        const firstResult = list.querySelector('.note-row[data-id]');
+        if (!firstResult) return;
+        event.preventDefault();
+        openNote(firstResult.dataset.id, true);
+      });
+      document.getElementById('backButton').addEventListener('click', () => app.classList.remove('is-editor'));
+      document.addEventListener('keydown', event => {
+        if (event.isComposing) return;
+        if (event.key === 'Escape' && app.classList.contains('is-editor')) {
+          event.preventDefault();
+          activeId = null;
+          app.classList.remove('is-editor');
+          renderList();
+          renderEditor();
+          searchInput.focus();
+          return;
+        }
+        const isInputTarget = event.target?.matches?.('input, textarea, button, [contenteditable="true"]');
+        const isEditableTarget = event.target?.closest?.('input, textarea, [contenteditable="true"]');
+        if (event.key.toLocaleLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey && !isEditableTarget) {
+          event.preventDefault();
+          createNote();
+          return;
+        }
+        if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (isInputTarget) return;
+        event.preventDefault();
+        app.classList.remove('is-editor');
+        searchInput.focus();
+      });
+      list.addEventListener('keydown', event => {
+        if (event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+        const row = event.target.closest('.note-row[data-id]');
+        if (!row) return;
+        const rows = [...list.querySelectorAll('.note-row[data-id]')];
+        const index = rows.indexOf(row);
+        let destination;
+        if (event.key === 'ArrowDown') destination = rows[Math.min(index + 1, rows.length - 1)];
+        if (event.key === 'ArrowUp') destination = index === 0 ? searchInput : rows[index - 1];
+        if (event.key === 'Home') destination = rows[0];
+        if (event.key === 'End') destination = rows[rows.length - 1];
+        event.preventDefault();
+        destination.focus();
+      });
+      list.addEventListener('click', event => {
+        const showAll = event.target.closest('[data-action="show-all"]');
+        if (showAll) {
+          pinnedOnly = false;
+          searchInput.value = '';
+          searchQuery = '';
+          renderList();
+          searchInput.focus();
+          return;
+        }
+        const clearSearch = event.target.closest('[data-action="clear-search"]');
+        if (clearSearch) {
+          searchInput.value = '';
+          searchQuery = '';
+          renderList();
+          searchInput.focus();
+          return;
+        }
+        const row = event.target.closest('[data-id]');
+        if (row) openNote(row.dataset.id, event.detail === 0);
+      });
+      editorWrap.addEventListener('input', event => {
+        if (event.target.id === 'noteTitle' || event.target.id === 'noteBody') saveEditor();
+      });
+      editorWrap.addEventListener('keydown', event => {
+        if (event.target?.id !== 'noteTitle' || event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+        event.preventDefault();
+        document.getElementById('noteBody')?.focus();
+      });
+      editorWrap.addEventListener('click', event => {
+        const action = event.target.closest('[data-action]')?.dataset.action;
+        if (action === 'new') createNote();
+        if (action === 'pin') togglePinned();
+        if (action === 'copy') copyActive();
+        if (action === 'download') downloadActive();
+        if (action === 'duplicate') duplicateActive();
+        if (action === 'delete') deleteActive();
+      });
+      if (notes.length) activeId = [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
+      renderList();
+      renderEditor();
+    })();
+  </script>
+</body>
+</html>
