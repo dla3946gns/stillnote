@@ -28,7 +28,10 @@
     button, input, textarea { font: inherit; }
     button { color: inherit; }
     .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; max-width: 1600px; margin: 0 auto; background: var(--paper); box-shadow: var(--shadow); }
-    .sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 30px 20px 20px; border-right: 1px solid var(--line); background: var(--sidebar); }
+    .sidebar { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: 100vh; padding: 30px 20px 20px; border-right: 1px solid var(--line); background: var(--sidebar); }
+    .sidebar-ambience { position: absolute; inset: 0 0 auto; z-index: -1; height: 152px; pointer-events: none; background: linear-gradient(125deg, #dce9de, #f6f3e7 78%); mask-image: linear-gradient(#000 35%, transparent); }
+    .sidebar-ambience canvas { display: block; opacity: 0; transition: opacity .8s; }
+    .sidebar-ambience canvas.is-ready { opacity: .85; }
     .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px; }
     .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--green); color: #fffdf5; }
     .brand-mark svg { width: 19px; height: 19px; }
@@ -120,13 +123,14 @@
       .note-body { min-height: 55vh; font-size: 15px; }
       .editor-bottom { flex-wrap: wrap; }
     }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } .sidebar-ambience canvas { visibility: hidden; } }
   </style>
 </head>
 <body>
   <div class="save-error" id="saveError" role="status" aria-live="polite" hidden><span>변경 내용을 저장하지 못했어요.</span><button class="save-retry" type="button" id="retrySaveButton">다시 저장</button></div>
   <main class="app" id="app">
     <aside class="sidebar" aria-label="메모 목록">
+      <div class="sidebar-ambience" aria-hidden="true"><canvas id="sidebarShader" style="width:100%;height:100%"></canvas></div>
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6.5h12M6 11.5h12M6 16.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
         <div><div class="brand-name">메모</div><div class="brand-caption">가볍게 적어두세요</div></div>
@@ -605,6 +609,11 @@
       renderList();
       renderEditor();
     })();
+  </script>
+  <script type="module">
+    if (navigator.gpu && !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData) {
+      import('./assets/sidebar-shader.js').then(({ startSidebarShader }) => startSidebarShader()).catch(() => {});
+    }
   </script>
 </body>
 </html>
