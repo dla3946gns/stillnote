@@ -127,7 +127,7 @@
   </style>
 </head>
 <body>
-  <div class="save-error" id="saveError" role="status" aria-live="polite" hidden><span>변경 내용을 저장하지 못했어요.</span><button class="save-retry" type="button" id="retrySaveButton">다시 저장</button></div>
+  <div class="save-error" id="saveError" role="status" aria-live="polite" hidden><span>변경 내용을 저장하지 못했어요.</span><button class="save-retry" type="button" id="retrySaveButton" title="다시 저장 (Ctrl+S / ⌘+S)" aria-keyshortcuts="Control+S Meta+S">다시 저장</button></div>
   <main class="app" id="app">
     <aside class="sidebar" aria-label="메모 목록">
       <div class="sidebar-ambience" aria-hidden="true"><canvas id="sidebarShader" style="width:100%;height:100%"></canvas></div>
@@ -164,7 +164,7 @@
       <div class="workspace-top">
         <button class="mobile-back" type="button" id="backButton"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 5-7 7 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>목록</button>
         <div class="workspace-label"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.75h7l4.25 4.3v12.2H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><path d="M14 4v4h4M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>메모장</div>
-        <div class="save-state" id="saveState" aria-live="polite"><span class="save-dot"></span><span>자동 저장</span></div>
+        <div class="save-state" id="saveState" aria-live="polite" title="Ctrl+S / ⌘+S로 저장" aria-keyshortcuts="Control+S Meta+S"><span class="save-dot"></span><span>자동 저장</span></div>
       </div>
       <div class="editor-wrap" id="editorWrap"></div>
     </section>
@@ -530,6 +530,24 @@
       document.getElementById('backButton').addEventListener('click', () => app.classList.remove('is-editor'));
       document.addEventListener('keydown', event => {
         if (event.isComposing) return;
+        if (event.key.toLocaleLowerCase() === 's' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.keyCode !== 229) {
+          event.preventDefault();
+          if (event.repeat) return;
+          const retryFocused = document.activeElement?.id === 'retrySaveButton';
+          const undoFocused = document.activeElement === toastAction;
+          const undoAction = toastAction.hidden ? null : toastAction.onclick;
+          const saved = persist();
+          if (undoAction) {
+            showToast(saved ? '저장했어요. 삭제한 메모는 복원할 수 있어요.' : toastMessage.textContent, undoAction);
+            if (undoFocused) toastAction.focus();
+          } else if (saved) showToast('메모를 저장했어요.');
+          if (saved && retryFocused) {
+            const bodyField = document.getElementById('noteBody');
+            if (bodyField?.getClientRects().length) bodyField.focus();
+            else searchInput.focus();
+          }
+          return;
+        }
         if (event.key === 'Escape' && app.classList.contains('is-editor')) {
           event.preventDefault();
           activeId = null;
