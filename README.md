@@ -14,8 +14,8 @@ python3 -m http.server 8765 --directory dist --bind 0.0.0.0
 
 ## Codex Cloud
 
-1. GitHub 연결에서 이 비공개 저장소에 대한 접근을 허용합니다.
-2. Cloud 환경 생성 시 이 저장소를 선택합니다. 별도 패키지 설치나 빌드 명령은 필요 없습니다.
+1. GitHub 연결에서 공개 저장소 [dla3946gns/stillnote](https://github.com/dla3946gns/stillnote)에 대한 접근을 허용합니다.
+2. Cloud 환경 생성 시 `dla3946gns/stillnote` 저장소를 선택합니다. 별도 패키지 설치나 빌드 명령은 필요 없습니다.
 3. `AGENTS.md`를 읽고 `dist/index.html`을 수정합니다. 위 명령으로 로컬 미리보기를 실행할 수 있습니다.
 
 ## 소스와 저장 방식
