@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f5f1">
+  <meta name="theme-color" content="#f8f7f1">
   <meta name="description" content="생각나는 순간, 간단히 적어두는 메모 앱입니다.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23355449'/%3E%3Cpath d='M15 14h18M15 21h18M15 28h12M15 35h18' stroke='%23f7f5ed' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%233d5b4a'/%3E%3Cpath d='M15 14h18M15 21h18M15 28h12M15 35h18' stroke='%23f7f5ed' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <title>메모 — 가볍게 적어두세요</title>
   <style>
     :root {
       color-scheme: light;
       --ink: #282c28;
-      --muted: #8a8e86;
+      --muted: #6f786c;
       --line: #e9e8e1;
       --paper: #fffefa;
       --canvas: #f6f5f1;
-      --sidebar: #fbfaf7;
-      --green: #355449;
-      --green-soft: #eaf0eb;
+      --sidebar: #f8f7f1;
+      --green: #3d5b4a;
+      --green-soft: #e8efe5;
       --coral: #c6765d;
       --shadow: 0 16px 50px rgba(39, 45, 38, .055);
       font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
@@ -29,9 +29,9 @@
     button { color: inherit; }
     .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; max-width: 1600px; margin: 0 auto; background: var(--paper); box-shadow: var(--shadow); }
     .sidebar { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: 100vh; padding: 30px 20px 20px; border-right: 1px solid var(--line); background: var(--sidebar); }
-    .sidebar-ambience { position: absolute; inset: 0 0 auto; z-index: -1; height: 152px; pointer-events: none; background: linear-gradient(125deg, #dce9de, #f6f3e7 78%); mask-image: linear-gradient(#000 35%, transparent); }
+    .sidebar-ambience { position: absolute; inset: 0 0 auto; z-index: -1; height: 152px; pointer-events: none; background: linear-gradient(125deg, #d9e5d6, #f4efdf 78%); mask-image: linear-gradient(#000 35%, transparent); }
     .sidebar-ambience canvas { display: block; opacity: 0; transition: opacity .8s; }
-    .sidebar-ambience canvas.is-ready { opacity: .85; }
+    .sidebar-ambience canvas.is-ready { opacity: .7; }
     .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px; }
     .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--green); color: #fffdf5; }
     .brand-mark svg { width: 19px; height: 19px; }
@@ -43,7 +43,7 @@
     .note-filter { margin-left: auto; margin-right: 8px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: #7e837b; cursor: pointer; font-size: 11px; }
     .note-filter[aria-pressed="true"] { border-color: #cdd8ce; background: var(--green-soft); color: var(--green); }
     .new-note { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; height: 44px; border: 0; border-radius: 12px; background: var(--green); color: #fffefa; cursor: pointer; font-size: 13px; font-weight: 650; transition: background .18s, transform .18s; }
-    .new-note:hover { background: #29463c; transform: translateY(-1px); }
+    .new-note:hover { background: #304a3b; transform: translateY(-1px); }
     .new-note:active { transform: translateY(0); }
     .new-note svg { width: 16px; height: 16px; }
     .search-box { display: flex; align-items: center; gap: 9px; height: 40px; margin-top: 13px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); color: #92978e; transition: border-color .15s, box-shadow .15s; }
@@ -58,12 +58,13 @@
     .export-button svg { width: 15px; height: 15px; }
     .notes-list { display: flex; flex: 1; flex-direction: column; gap: 4px; margin: 17px -7px 0; overflow-y: auto; }
     .note-row { display: block; width: 100%; padding: 13px 13px 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; text-align: left; cursor: pointer; transition: background .15s, border-color .15s; }
-    .note-row:hover { background: #f4f3ee; }
-    .note-row.selected { border-color: #e4e9e3; background: var(--green-soft); }
+    .note-row:hover { background: #eff2e9; }
+    .note-row.selected { border-color: #d3dfd0; background: var(--green-soft); }
+    .note-row.selected .note-row-title { color: var(--green); }
     .note-row-title { display: block; overflow: hidden; color: #363a35; font-size: 13px; font-weight: 630; text-overflow: ellipsis; white-space: nowrap; }
     .note-row-excerpt { display: block; overflow: hidden; margin-top: 6px; color: #7e837b; font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
     .note-row-date { display: block; margin-top: 9px; color: #a1a49d; font-size: 10px; letter-spacing: .01em; }
-    .list-empty { margin: 7px 8px; padding: 18px 13px; border: 1px dashed #dfded7; border-radius: 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .list-empty { margin: 7px 8px; padding: 18px 13px; border: 1px dashed #d6dfce; border-radius: 12px; background: radial-gradient(ellipse at 15% 0, #e8efe5, transparent 75%), #f8f7f1; color: var(--muted); font-size: 12px; line-height: 1.6; }
     .list-empty-action { margin-top: 8px; padding: 0; border: 0; background: transparent; color: var(--green); cursor: pointer; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; }
     .sidebar-foot { display: flex; align-items: flex-start; gap: 9px; margin-top: auto; padding: 17px 7px 0; border-top: 1px solid var(--line); color: #888c83; font-size: 11px; line-height: 1.5; }
     .sidebar-foot svg { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 1px; color: var(--green); }
@@ -97,10 +98,12 @@
     .local-hint { display: flex; align-items: center; gap: 7px; }
     .local-hint svg { width: 13px; height: 13px; }
     .empty-editor { display: grid; min-height: 55vh; place-content: center; justify-items: center; text-align: center; }
-    .empty-illustration { display: grid; width: 76px; height: 76px; place-items: center; border: 1px solid #ebeae4; border-radius: 25px; background: #f8f7f2; color: #8a9b8b; }
+    .empty-illustration { position: relative; isolation: isolate; display: grid; width: 76px; height: 76px; place-items: center; border: 1px solid #d3dfd0; border-radius: 25px; background: var(--green-soft); color: var(--green); }
+    .empty-illustration::before { content: ""; position: absolute; z-index: -1; inset: -74px; border-radius: 50%; background: radial-gradient(ellipse at 35% 40%, rgba(174, 198, 161, .32), transparent 67%), radial-gradient(ellipse at 70% 65%, rgba(231, 216, 173, .3), transparent 65%); pointer-events: none; animation: empty-glow 12s ease-in-out infinite alternate; }
+    @keyframes empty-glow { from { transform: translateY(0) scale(.95); opacity: .65; } to { transform: translateY(-6px) scale(1.05); opacity: .9; } }
     .empty-illustration svg { width: 30px; height: 30px; }
     .empty-editor h2 { margin: 22px 0 8px; font-size: 20px; font-weight: 650; letter-spacing: -.04em; }
-    .empty-editor p { margin: 0; color: #8e928a; font-size: 13px; line-height: 1.7; }
+    .empty-editor p { margin: 0; color: #69776b; font-size: 13px; line-height: 1.7; }
     .empty-editor .new-note { width: auto; min-width: 132px; margin-top: 23px; padding: 0 17px; }
     .mobile-back { display: none; }
     .toast { position: fixed; right: 22px; bottom: 22px; z-index: 5; display: flex; align-items: center; gap: 14px; padding: 11px 15px; border: 1px solid #e7e9e3; border-radius: 12px; background: #fffefa; box-shadow: 0 8px 24px rgba(30, 39, 32, .09); color: #4c5b4f; font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .2s, transform .2s; }
@@ -123,7 +126,7 @@
       .note-body { min-height: 55vh; font-size: 15px; }
       .editor-bottom { flex-wrap: wrap; }
     }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } .sidebar-ambience canvas { visibility: hidden; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } .sidebar-ambience canvas { visibility: hidden; } .empty-illustration::before { animation: none; } }
   </style>
 </head>
 <body>
