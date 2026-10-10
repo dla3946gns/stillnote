@@ -20,7 +20,7 @@ export async function startSidebarShader() {
   shader = await createShader(canvas, {
     components: [{
       type: 'MeshGradient',
-      props: { stops: null, colorA: '#d9e5d6', colorB: '#f4efdf', speed: .1, colorSpace: 'oklab', count: 3, variation: 0, drift: .15, swirl: .08 }
+      props: { stops: null, colorA: '#ebd8c5', colorB: '#f5efe3', speed: .1, colorSpace: 'oklab', count: 3, variation: 0, drift: .15, swirl: .08 }
     }]
   }, {
     disableTelemetry: true,
