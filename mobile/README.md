@@ -82,7 +82,13 @@ KMP 공통 `NotesStore`에 대해 Android 호스트 JVM 테스트 14개를 추�
 ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:assembleDebug
 ```
 
-GitHub Actions는 PR의 코드가 변경될 때 이 명령을 자동 실행하고 테스트 결과 XML을 아티팩트로 업로드합니다. **이 테스트는 Android 호스트 JVM에서 실행되는 테스트**로, 실제 기기 환경의 파일 I/O, UI 상호작용, 에뮬레이터 및 실기기 사용성 검증을 대신하지 않습니다. 해당 항목은 이후 별도 QA로 진행해야 합니다.
+GitHub Actions는 PR의 코드가 변경될 때 이 명령을 자동 실행하고 테스트 결과 XML을 아티팩트로 업로드합니다. **위의 17개 테스트는 Android 호스트 JVM에서 실행됩니다.** 실제 Android 기기 환경과 Compose 화면을 검증하기 위해 별도의 `androidTest` 계측 테스트도 추가했습니다. GitHub Actions에서 API 35 x86_64 에뮬레이터를 실행하고 라이트·다크 모드 각각 메모 작성·저장·취소, 미저장 확인창, 검색·고정, 삭제·복원, Activity 재실행 후 데이터 유지와 테마 배경색을 검사합니다. 테스트 보고서와 테마 캡처는 `android-emulator-qa` 아티팩트로 보관합니다. 전체 계측 테스트는 다음 명령으로 수동 실행할 수 있습니다(에뮬레이터 또는 Android 기기가 연결돼 있어야 함).
+
+```sh
+./gradlew :androidApp:connectedDebugAndroidTest
+```
+
+에뮬레이터 검증은 실제 물리 기기의 성능·키보드 호환성, 제조사별 동작, Android 문서 선택기를 통한 백업 입출력을 완전히 대체하지는 못합니다.
 
 ## iOS 실행
 
@@ -96,7 +102,8 @@ Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다.
 - Android APK 빌드: 성공. 저장 처리 보완 후 재빌드도 성공.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행: Windows 환경이므로 미수행.
 - 공통 메모 로직 14개와 Android 파일 저장 3개의 자동 테스트 및 CI 연동: 구현 완료. 최신 CI 통과 여부는 Actions에서 확인해야 합니다.
-- Android 에뮬레이터·실기기 UI 및 파일 저장 동작 QA: 미수행.
+- Android API 35 에뮬레이터 Compose UI 계측 테스트: 코드/CI 구성 완료. 실행 결과는 Actions에서 확인해야 합니다.
+- Android 실제 기기 UI·제조사별 동작 및 시스템 파일 선택기를 통한 백업 QA: 미수행.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행 및 App Store 배포: Mac 환경을 사용할 수 있을 때까지 보류.
 
-다음 단계는 Android 자동 테스트 통과 확인, Android 에뮬레이터 기능 QA, PR #1의 main 병합입니다. iOS는 그동안 출시 준비용 코드와 의존성만 관리합니다.
+다음 단계는 Android 에뮬레이터 계측 테스트 통과 확인, 필요한 UI 수정, 실기기·백업 QA 후 PR #1의 main 병합입니다. iOS는 그동안 출시 준비용 코드와 의존성만 관리합니다.
