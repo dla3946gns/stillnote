@@ -1,0 +1,60 @@
+name: Record Android app demo
+on:
+  push:
+    branches: [codex/android-demo-20261011]
+    paths:
+      - .github/workflows/android-demo.yml
+      - tools/record_android_demo.py
+permissions:
+  contents: read
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4.0.4
+        with:
+          cmdline-tools-version: '16111833'
+          log-accepted-android-sdk-licenses: false
+      - name: Install compile SDK
+        run: android --no-metrics --sdk="$ANDROID_HOME" sdk install platforms/android-37.0 build-tools/36.0.0
+      - name: Build the existing debug app
+        working-directory: mobile
+        run: ./gradlew :androidApp:assembleDebug --console=plain --no-daemon
+      - name: Enable KVM on the temporary runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run and record the app
+        uses: reactivecircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 2048M
+          disable-animations: false
+          disable-spellchecker: true
+          enable-hw-keyboard: true
+          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -no-audio -no-boot-anim -no-metrics
+          script: |
+            adb install -r mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+            adb shell wm size 720x1440
+            adb shell wm density 320
+            adb shell settings put system show_touches 1
+            adb shell settings put system screen_off_timeout 2147483647
+            python3 tools/record_android_demo.py --output demo-output
+      - name: Save the recording and verification results
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: stillnote-android-demo
+          path: demo-output/
+          retention-days: 7
+          if-no-files-found: warn
