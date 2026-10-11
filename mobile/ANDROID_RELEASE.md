@@ -109,7 +109,9 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 - [ ] `PRIVACY_POLICY_DRAFT.md`의 개발자 연락처·정책 내용 확정 및 공개 URL 준비
 - [x] Android 앱 내 정책 전문 오프라인 열람 기능 구현 및 자동 UI 테스트 추가
 - [ ] 정책 메뉴가 실제 삼성 휴대전화에서 정상 작동하는지 확인
-- [ ] GitHub Pages `main /docs` 설정, 예정 정책 URL 공개 접근 및 HTTPS 확인
+- [x] GitHub Pages 자동 배포 워크플로 준비 및 정책 본문 일치 검증
+- [ ] 소유자가 Settings → Pages → Source에서 **GitHub Actions**를 선택한 후 워크플로 수동 실행
+- [ ] 예정 정책 URL 공개 접근 및 HTTPS 확인
 - [ ] 앱 이름·아이콘·스크린샷·스토어 등록정보 최종 확인
 - [ ] 개인정보처리방침 및 Play Console 데이터 보안(Data safety) 신고 항목 확인
 - [ ] 콘텐츠 등급, 타깃 고객층, 개인정보 및 필수 정책 질문 완료
