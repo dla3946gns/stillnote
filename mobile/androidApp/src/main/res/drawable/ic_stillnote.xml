@@ -1,8 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#F5EFE3" android:pathData="M0,0h108v108h-108z" />
-    <path android:fillColor="#7A5746" android:pathData="M33,27h42a5,5 0,0 1,5 5v48h-42a10,10 0,0 1,-10 -10v-38a5,5 0,0 1,5 -5z" />
-    <path android:fillColor="#FFFCF6" android:pathData="M40,40h27v4h-27zM40,51h27v4h-27zM40,62h18v4h-18z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Consistent with mobile/play/assets/stillnote-icon.svg.
+         Posili is the approved warm pastel sprout-potato brand mascot. -->
+    <path android:fillColor="#FFF9EF" android:pathData="M0,0h108v108h-108z"/>
+    <path android:pathData="M52,33 C51,27 52,21 55,17"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#5B4A32" android:strokeWidth="3.2"
+        android:strokeLineCap="round"/>
+    <path android:pathData="M54,21 C45,21 39,15 39,8 C49,7 56,13 57,20 Z"
+        android:fillColor="#7DBB4F" android:strokeColor="#5B4A32"
+        android:strokeWidth="2.7" android:strokeLineJoin="round"/>
+    <path android:pathData="M54,22 C55,12 62,8 73,10 C72,20 65,24 54,22 Z"
+        android:fillColor="#93CA6B" android:strokeColor="#5B4A32"
+        android:strokeWidth="2.7" android:strokeLineJoin="round"/>
+    <path android:pathData="M29,75 C22,73 20,68 22,63 C24,59 28,60 31,62"
+        android:fillColor="#F7D58B" android:strokeColor="#5B4A32"
+        android:strokeWidth="3.2" android:strokeLineCap="round"/>
+    <path android:pathData="M79,61 C84,59 88,62 87,67 C87,72 82,74 78,74"
+        android:fillColor="#F7D58B" android:strokeColor="#5B4A32"
+        android:strokeWidth="3.2" android:strokeLineCap="round"/>
+    <path android:pathData="M33,77 C27,59 28,43 38,34 C46,27 63,27 72,34 C83,43 84,63 76,78 C70,89 42,91 33,77 Z"
+        android:fillColor="#F7D58B" android:strokeColor="#5B4A32"
+        android:strokeWidth="3.3" android:strokeLineJoin="round"/>
+    <path android:pathData="M41,84 Q40,92 46,92 Q50,92 51,86 M59,86 Q60,93 66,92 Q71,91 69,83"
+        android:fillColor="#F7D58B" android:strokeColor="#5B4A32"
+        android:strokeWidth="3.2" android:strokeLineCap="round"/>
+    <path android:fillColor="#FFB3C1"
+        android:pathData="M43.8,59 C43.8,61.32 41.2,63.2 38,63.2 C34.8,63.2 32.2,61.32 32.2,59 C32.2,56.68 34.8,54.8 38,54.8 C41.2,54.8 43.8,56.68 43.8,59 Z"/>
+    <path android:fillColor="#FFB3C1"
+        android:pathData="M75.8,59 C75.8,61.32 73.2,63.2 70,63.2 C66.8,63.2 64.2,61.32 64.2,59 C64.2,56.68 66.8,54.8 70,54.8 C73.2,54.8 75.8,56.68 75.8,59 Z"/>
+    <path android:fillColor="#5B4A32"
+        android:pathData="M49.5,54 C49.5,55.71 48.38,57.1 47,57.1 C45.62,57.1 44.5,55.71 44.5,54 C44.5,52.29 45.62,50.9 47,50.9 C48.38,50.9 49.5,52.29 49.5,54 Z"/>
+    <path android:fillColor="#5B4A32"
+        android:pathData="M64.5,54 C64.5,55.71 63.38,57.1 62,57.1 C60.62,57.1 59.5,55.71 59.5,54 C59.5,52.29 60.62,50.9 62,50.9 C63.38,50.9 64.5,52.29 64.5,54 Z"/>
+    <path android:pathData="M51,61 Q54.5,66 58,61"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#5B4A32" android:strokeWidth="2.7"
+        android:strokeLineCap="round"/>
+    <path android:fillColor="#EBBC6D"
+        android:pathData="M65.1,41 C65.1,41.9 64.2,42.8 63,42.8 C61.8,42.8 61,41.9 61,41 C61,40.1 61.8,39.3 63,39.3 C64.2,39.3 65.1,40.1 65.1,41 Z"/>
+    <path android:fillColor="#EBBC6D"
+        android:pathData="M68.3,45 C68.3,45.61 67.72,46.1 67,46.1 C66.28,46.1 65.7,45.61 65.7,45 C65.7,44.39 66.28,43.9 67,43.9 C67.72,43.9 68.3,44.39 68.3,45 Z"/>
 </vector>
