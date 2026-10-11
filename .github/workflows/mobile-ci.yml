@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
+      - 'docs/**'
       - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 
