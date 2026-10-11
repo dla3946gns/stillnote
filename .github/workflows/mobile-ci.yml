@@ -82,18 +82,7 @@ jobs:
           arch: x86_64
           profile: pixel_4
           disable-animations: true
-          script: |
-            set +e
-            cd mobile
-            adb shell cmd uimode night no
-            bash ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
-            light_exit=$?
-            adb shell cmd uimode night yes
-            bash ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks --stacktrace
-            dark_exit=$?
-            mkdir -p androidApp/build/qa-screenshots
-            adb pull /sdcard/Android/data/com.stillnotes.app/files/qa/. androidApp/build/qa-screenshots/ || true
-            if [ "$light_exit" -ne 0 ] || [ "$dark_exit" -ne 0 ]; then exit 1; fi
+          script: bash mobile/scripts/run-emulator-ui-tests.sh
       - name: Upload emulator test reports and theme captures
         if: always()
         uses: actions/upload-artifact@v4
