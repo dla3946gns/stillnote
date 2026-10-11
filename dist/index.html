@@ -254,10 +254,6 @@
         saveState.innerHTML = saveFailed
           ? '<span style="color:#c6765d">저장하지 못했어요</span>'
           : `<span class="save-dot"></span><span>${label}</span>`;
-        const saveButton = document.getElementById('saveNoteButton');
-        const cancelButton = document.getElementById('cancelEditButton');
-        if (saveButton) saveButton.disabled = !hasUnsavedChanges() && !saveFailed;
-        if (cancelButton) cancelButton.disabled = !hasUnsavedChanges() && editSaveFailure === null;
       };
       const persist = (candidate = notes) => {
         try {
@@ -749,9 +745,13 @@
       editorWrap.addEventListener('click', event => {
         const action = event.target.closest('[data-action]')?.dataset.action;
         if (action === 'new') createNote();
-        if (action === 'save' && saveEditor()) showToast('메모를 저장했어요.');
+        if (action === 'save' && saveEditor()) {
+          closeEditor();
+          showToast('메모를 저장했어요.');
+        }
         if (action === 'cancel') {
           cancelEdit();
+          closeEditor();
           showToast('편집을 취소했어요.');
         }
         if (action === 'pin') withUnsavedGuard(togglePinned);
