@@ -30,4 +30,21 @@
   <ellipse cx="63" cy="41" rx="2" ry="1.6" fill="#EBBC6D" transform="rotate(23 63 41)"/>
   <ellipse cx="67" cy="45" rx="1.3" ry="1.1" fill="#EBBC6D"/>
 </g>
+<!-- A notebook and pencil turn the mascot into a memo-writing scene,
+     distinct from the simpler launcher icon portrait. -->
+<g transform="translate(728 338) rotate(-6 105 55)">
+ <path d="M0 8 Q56 -3 108 8 Q162 -3 220 8 L220 124 Q165 110 108 127 Q51 110 0 124 Z" fill="#FFFCF6" stroke="#7A5746" stroke-width="5" stroke-linejoin="round"/>
+ <path d="M108 8 L108 127" fill="none" stroke="#D5BBA1" stroke-width="4"/>
+ <g stroke="#D5BBA1" stroke-width="3" stroke-linecap="round" opacity=".9">
+  <path d="M17 35 L89 29 M17 54 L89 48 M17 73 L89 67 M17 92 L76 87"/>
+  <path d="M129 31 L202 36 M129 50 L202 55 M129 69 L202 74 M129 88 L186 92"/>
+ </g>
+</g>
+<g transform="translate(861 292) rotate(25 9 49)">
+ <path d="M1 17 L18 17 L18 93 L9.5 109 L1 93 Z" fill="#F4B94A" stroke="#5B4A32" stroke-width="3.3" stroke-linejoin="round"/>
+ <rect x="1" y="5" width="17" height="17" rx="4" fill="#FFB3C1" stroke="#5B4A32" stroke-width="3.1"/>
+ <path d="M1 88 L18 88" stroke="#FFF9EF" stroke-width="4"/>
+ <path d="M7 103 L9.5 109 L12 103" fill="#5B4A32" stroke="#5B4A32" stroke-width="1"/>
+</g>
+
 </svg>
