@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -53,6 +54,7 @@ fun StillnoteApp(
         keyboardController?.hide()
     }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun requestAction(action: () -> Unit) {
         if (model.state.hasUnsavedChanges) pendingAction = action else {
@@ -129,7 +131,8 @@ fun StillnoteApp(
                             },
                             onCreate = { requestAction { store.createNote() } },
                             onExportBackup = onExportBackup,
-                            onImportBackup = { requestAction(onImportBackup) }
+                            onImportBackup = { requestAction(onImportBackup) },
+                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } }
                         )
                     }
                     if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -162,6 +165,9 @@ fun StillnoteApp(
                 }
             }
         }
+    }
+    if (showPrivacyPolicy) {
+        PrivacyPolicyDialog(onDismiss = { showPrivacyPolicy = false })
     }
     if (pendingAction != null) {
         AlertDialog(
@@ -221,6 +227,33 @@ fun StillnoteApp(
 }
 
 @Composable
+private fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    // Bundled content remains available offline even before public hosting is enabled.
+    val policyText = remember(context) {
+        context.assets.open("privacy-policy-ko.txt").bufferedReader(Charsets.UTF_8).use { it.readText() }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("개인정보처리방침") },
+        text = {
+            Text(
+                text = policyText,
+                modifier = Modifier.heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+                    .testTag("privacy-policy-body"),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("privacy-policy-close")) {
+                Text("닫기")
+            }
+        }
+    )
+}
+
+@Composable
 private fun StorageBanner(message: String, action: String, onAction: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.errorContainer) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
@@ -240,7 +273,8 @@ private fun NotesList(
     onSelect: (String) -> Unit,
     onCreate: () -> Unit,
     onExportBackup: () -> Unit,
-    onImportBackup: () -> Unit
+    onImportBackup: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
@@ -259,6 +293,11 @@ private fun NotesList(
                         menuOpen = false
                         onImportBackup()
                     }, enabled = !state.loadFailed && !state.saveFailed)
+                    HorizontalDivider()
+                    DropdownMenuItem(text = { Text("개인정보처리방침") }, onClick = {
+                        menuOpen = false
+                        onOpenPrivacyPolicy()
+                    })
                 }
             }
         }
