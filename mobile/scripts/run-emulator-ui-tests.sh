@@ -27,8 +27,18 @@ bash ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks --stacktrace
 dark_exit=$?
 echo "::endgroup::"
 
+# MediaStore screenshots survive test-runner uninstall/reinstall cycles.
 mkdir -p androidApp/build/qa-screenshots
-adb pull /sdcard/Android/data/com.stillnotes.app/files/qa/. androidApp/build/qa-screenshots/ || true
+if ! adb pull /sdcard/Pictures/StillnoteQA/. androidApp/build/qa-screenshots/; then
+    echo "::error::Cannot retrieve real Play screenshot captures from emulator"
+    exit 1
+fi
+for shot in store-list-light.png store-editor-light.png store-list-dark.png store-editor-dark.png; do
+    if [[ ! -s "androidApp/build/qa-screenshots/$shot" ]]; then
+        echo "::error::Missing real Android Play screenshot: $shot"
+        exit 1
+    fi
+done
 
 if [[ "$light_exit" -ne 0 || "$dark_exit" -ne 0 ]]; then
     echo "::error::Android UI tests failed (light=$light_exit, dark=$dark_exit)"
