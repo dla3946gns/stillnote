@@ -2,6 +2,7 @@ package com.stillnotes.app
 
 import android.content.Context
 import android.content.res.Configuration
+import android.view.WindowInsets
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
@@ -51,7 +53,30 @@ class NotesUiTest {
         if (::scenario.isInitialized) scenario.close()
     }
 
+
     private fun targetContext(): Context = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private fun isKeyboardVisible(): Boolean {
+        var visible = false
+        scenario.onActivity { activity ->
+            visible = (activity.window.decorView.rootWindowInsets
+                ?.getInsets(WindowInsets.Type.ime())?.bottom ?: 0) > 0
+        }
+        return visible
+    }
+
+    private fun captureKeyboardLayout(name: String) {
+        val night = (targetContext().resources.configuration.uiMode
+            and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val screenshot = compose.onRoot().captureToImage().asAndroidBitmap()
+        val directory = checkNotNull(targetContext().getExternalFilesDir("qa"))
+        assertTrue(directory.exists() || directory.mkdirs())
+        val output = File(directory, name + "-" + (if (night) "dark" else "light") + ".png")
+        output.outputStream().use {
+            assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+
 
     private fun newDraft(title: String, body: String) {
         compose.onNodeWithText("새 메모").performClick()
@@ -182,6 +207,37 @@ class NotesUiTest {
         compose.onNodeWithText("아직 메모가 없어요").assertIsDisplayed()
         compose.onNodeWithText("삭제 취소").performClick()
         compose.onNodeWithText("삭제 확인 메모").assertIsDisplayed()
+    }
+
+
+    @Test
+    fun searchAndEditorRemainUsableWithTheKeyboardOpen() {
+        // Regression for a collapsed UI with adjustResize and a visible IME.
+        compose.onNodeWithTag("notes-search").performClick()
+        compose.waitUntil(10_000) { isKeyboardVisible() }
+        compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        compose.onNodeWithTag("notes-search").performTextInput("검색 키보드")
+        compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        captureKeyboardLayout("keyboard-list")
+
+        compose.onNodeWithText("새 메모").performClick()
+        compose.onNodeWithTag("note-title").performClick()
+        compose.waitUntil(10_000) { isKeyboardVisible() }
+        compose.onNodeWithTag("note-title").assertIsDisplayed()
+        compose.onNodeWithTag("note-title").performTextInput("키보드 레이아웃")
+        compose.onNodeWithTag("note-title").assertIsDisplayed()
+
+        compose.onNodeWithTag("note-body").performScrollTo().performClick()
+        compose.waitUntil(10_000) { isKeyboardVisible() }
+        compose.onNodeWithTag("note-body").assertIsDisplayed()
+        compose.onNodeWithTag("note-body").performTextInput("본문 입력을 확인합니다.")
+        compose.onNodeWithTag("note-body").assertIsDisplayed()
+        captureKeyboardLayout("keyboard-editor")
+
+        compose.onNodeWithText("저장").performClick()
+        compose.waitUntil(10_000) { !isKeyboardVisible() }
+        compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        compose.onNodeWithText("키보드 레이아웃").assertExists()
     }
 
     @Test
