@@ -81,3 +81,38 @@ jobs:
         if: steps.pages_status.outputs.enabled == 'true'
         uses: actions/deploy-pages@v4
         id: deployment
+      - name: Verify publicly accessible HTTPS pages
+        if: steps.pages_status.outputs.enabled == 'true'
+        shell: bash
+        env:
+          PUBLIC_SITE: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          site="${PUBLIC_SITE%/}"
+          [[ "$site" == https://* ]] || { echo '::error::Pages deployment did not provide an HTTPS URL'; exit 1; }
+          for suffix in / /privacy/; do
+            verified=false
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --location --max-time 15 --output "$RUNNER_TEMP/stillnote-public-page.html" "$site$suffix"; then
+                if [[ "$suffix" == '/privacy/' ]]; then
+                  if grep -Fq 'Stillnote 개인정보처리방침' "$RUNNER_TEMP/stillnote-public-page.html" &&
+                     grep -Fq 'Anna Johnny Works' "$RUNNER_TEMP/stillnote-public-page.html" &&
+                     grep -Fq 'dla3946gns@gmail.com' "$RUNNER_TEMP/stillnote-public-page.html"; then
+                    verified=true
+                    break
+                  fi
+                elif grep -Fq 'Stillnote' "$RUNNER_TEMP/stillnote-public-page.html" &&
+                     grep -Fq 'href="./privacy/"' "$RUNNER_TEMP/stillnote-public-page.html"; then
+                  verified=true
+                  break
+                fi
+              fi
+              echo "Attempt $attempt: waiting for Pages propagation: $site$suffix"
+              sleep 10
+            done
+            if [[ "$verified" != true ]]; then
+              echo "::error::Public Pages URL was not served correctly over HTTPS: $site$suffix"
+              exit 1
+            fi
+            echo "Verified public HTTPS page: $site$suffix"
+          done
