@@ -96,15 +96,20 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 ## 스토어 등록정보 및 개인정보 고지 준비
 
 - [한국어 스토어 등록정보 초안](PLAY_STORE_LISTING_DRAFT.md)
-- [개인정보처리방침 및 데이터 처리 설명 초안](PRIVACY_POLICY_DRAFT.md)
+- [개인정보처리방침 및 운영 주체 확인·배포 전 검토](PRIVACY_POLICY_DRAFT.md)
+- [앱 내부 개인정보처리방침 원문](androidApp/src/main/assets/privacy-policy-ko.txt)
+- [GitHub Pages 공개용 정책 페이지](../docs/privacy/index.html)
+- [웹사이트 게시와 공개 URL 검증 절차](PRIVACY_POLICY_PUBLISHING.md)
 
-두 문서는 현재 앱 기능을 기준으로 준비했으며 **완성된 법적 고지·공개 URL이 아닙니다.** 개발자 정보와 개인정보 문의 연락처를 소유자가 제공해야 합니다. Google Play 정책상 개인정보처리방침의 공개 웹 URL 등록 외에 **앱 안에서도 정책 링크 또는 전문을 제공해야 하므로**, 최종 고지 내용을 승인받은 뒤 앱 UI에 반영하고 테스트해야 합니다. Play Console 데이터 보안 설문 또한 최종 AAB의 SDK·권한·데이터 처리와 일치하도록 검증해야 합니다.
+운영 주체는 **Anna Johnny Works**, 사용자 문의 이메일은 **dla3946gns@gmail.com**으로 확인되어 앱과 정책 페이지에 반영했습니다. Android 앱의 `더보기 → 개인정보처리방침`에서 **인터넷 없이 전체 정책을 확인**할 수 있도록 구현했습니다. CI는 앱 내부 정책과 웹페이지 정책의 내용 일치를 자동 검사합니다. 다만 정책 웹페이지의 **실제 HTTPS 공개 URL은 아직 GitHub Pages 설정 및 접근 확인이 필요**합니다. Google Play Data safety 설문, 운영 주체 사업자 관련 필수 정보 및 최종 공개 정책의 법적 검토도 별도로 필요합니다.
 
 ## 4. Google Play 내부 테스트 전 체크
 
 - [ ] `PLAY_STORE_LISTING_DRAFT.md`에서 설명을 검토하고 실제 스토어 등록정보로 확정
 - [ ] `PRIVACY_POLICY_DRAFT.md`의 개발자 연락처·정책 내용 확정 및 공개 URL 준비
-- [ ] Android 앱 내 개인정보처리방침 링크 또는 정책 전문 제공, 최종 AAB에서 작동 확인
+- [x] Android 앱 내 정책 전문 오프라인 열람 기능 구현 및 자동 UI 테스트 추가
+- [ ] 정책 메뉴가 실제 삼성 휴대전화에서 정상 작동하는지 확인
+- [ ] GitHub Pages `main /docs` 설정, 예정 정책 URL 공개 접근 및 HTTPS 확인
 - [ ] 앱 이름·아이콘·스크린샷·스토어 등록정보 최종 확인
 - [ ] 개인정보처리방침 및 Play Console 데이터 보안(Data safety) 신고 항목 확인
 - [ ] 콘텐츠 등급, 타깃 고객층, 개인정보 및 필수 정책 질문 완료
