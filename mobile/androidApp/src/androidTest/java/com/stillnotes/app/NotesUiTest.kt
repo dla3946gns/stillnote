@@ -3,7 +3,6 @@ package com.stillnotes.app
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
