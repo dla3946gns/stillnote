@@ -92,6 +92,12 @@ GitHub Actions는 PR의 코드가 변경될 때 이 명령을 자동 실행하�
 
 에뮬레이터 검증은 실제 물리 기기의 성능·키보드 호환성, 제조사별 동작, Android 문서 선택기를 통한 백업 입출력을 완전히 대체하지는 못합니다. 이를 보완하기 위해 Android Downloads 공급자의 `ContentResolver`를 사용하는 JSON 백업 입출력 계측 테스트 5개도 추가했습니다. 이 테스트는 실제 파일 스트림과 복원 로직을 확인하지만 **시스템 파일 선택기 UI를 직접 누르는 테스트는 아니므로 실기기 QA가 여전히 필요합니다.**
 
+## Android 정식 릴리스 빌드 준비
+
+Google Play 업로드용 AAB는 소유자만 보유한 **업로드 서명키**를 사용하며, 서명키·비밀번호는 저장소에 포함하지 않습니다. `mobile/gradle.properties`의 `stillnoteVersionCode`, `stillnoteVersionName`으로 버전을 관리합니다. PR CI는 **폐기용 임시 키로 AAB 빌드만 확인**하고 실제 AAB는 업로드하지 않습니다. 소유자 서명 AAB는 GitHub Actions의 `Android signed release AAB` 워크플로를 `main`에서 수동 실행하도록 구성했습니다. 서명 Secret을 등록하지 않으면 정식 빌드가 실패합니다.
+
+**서명키 생성·백업, GitHub 환경 Secret 등록, 수동 릴리스 빌드와 Play Console 내부 테스트 절차는 [Android 릴리스 가이드](ANDROID_RELEASE.md)를 참고하세요.** 현재 자동 Play Store 게시 기능은 없고, CI에서 업로드 키를 생성하거나 보관하지 않습니다.
+
 ## iOS 실행
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
@@ -103,9 +109,11 @@ Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다.
 - 공통 Kotlin 메타데이터 컴파일: 성공.
 - Android APK 빌드: 성공. 저장 처리 보완 후 재빌드도 성공.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행: Windows 환경이므로 미수행.
-- 공통 메모 로직 14개, Android 파일 저장 호스트 테스트 3개, API 35 에뮬레이터 Compose UI 테스트 7개(라이트·다크 모드): GitHub Actions #39에서 통과했습니다.
-- Android 문서 공급자를 통한 UTF-8 JSON 백업 입출력 계측 테스트 5개: QA PR에서 구현했으며 해당 PR의 최신 CI에서 결과 확인이 필요합니다.
-- 실제 기기 UI·제조사별 동작·시스템 문서 선택기 백업 QA: 미수행. [체크리스트](ANDROID_DEVICE_QA.md) 참조.
+- 공통 메모 로직 14개, Android 파일 저장 호스트 테스트 3개: GitHub Actions #43에서 통과.
+- API 35 에뮬레이터 Compose UI 8개 + Android JSON 백업/문서 공급자 계측 테스트 5개를 라이트·다크 모드에서 각각 실행: 총 26회 GitHub Actions #43 통과.
+- 사용자 보고: 삼성 Android 실기기에서 키보드 표시, 작성·저장, 재시작 후 데이터 유지, JSON 백업·복원, 취소·검색·삭제 5개 항목 통과.
+- 회전·큰 글씨, 타사 키보드·다른 제조사, 클라우드 문서 공급자 등 추가 기기 호환성 QA: 미완료. [체크리스트](ANDROID_DEVICE_QA.md) 참조.
+- Android Google Play 릴리스: 업로드키·환경 Secret·서명 AAB·Play 내부 테스트는 별도 준비 작업 중. 스토어 공개 전 확인 필요.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행 및 App Store 배포: Mac 환경을 사용할 수 있을 때까지 보류.
 
-Android 기본 앱/자동 테스트는 PR #1을 통해 `main`에 병합됐습니다. 실기기용 QA 개선은 후속 PR로 검증하고, 실제 휴대전화에서 남은 체크리스트를 완료하기 전까지 스토어 배포는 보류합니다.
+Android 앱과 실기기 QA 개선은 PR #1·#2를 통해 `main`에 병합됐습니다. Android 정식 릴리스 구성은 새로운 PR로 검증하며, Google Play 자동 배포는 하지 않습니다.
