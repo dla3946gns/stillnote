@@ -112,6 +112,12 @@ PR CI에 **이전 main 빌드에서 실제 메모를 생성하고 새 APK를 `ad
 - [GitHub Pages 자동 배포](../.github/workflows/privacy-pages.yml)를 구성했습니다. [게시 안내](PRIVACY_POLICY_PUBLISHING.md)에 따라 소유자가 저장소 Pages 설정에서 **Source → GitHub Actions**를 한 번 선택해야 합니다. 이후 정책이 `main`에 반영되면 자동 배포하며, **현재 공개 웹 URL의 활성화는 확인되지 않았습니다.**
 - [Play 스토어 등록정보 초안](PLAY_STORE_LISTING_DRAFT.md)에 운영 주체/지원 이메일을 반영했지만, 실제 사업자 정보·정책 URL·스크린샷·개인정보 관련 Play Console 신고는 최종 검토가 필요합니다.
 
+## Google Play 등록정보 및 스토어 이미지
+
+[Google Play 등록정보 JSON](play/listing-ko.json), [데이터 보안 사전 점검](PLAY_DATA_SAFETY_REVIEW.md), [스토어 아이콘·대표 그래픽·실제 화면 캡처 안내](PLAY_ASSETS.md)를 준비합니다. Android 런처 아이콘도 브랜드 가이드의 포실이 캐릭터로 맞췄습니다. Google Play 게시용 PNG는 CI에서 자동 생성하고 검사하며, 개인 메모 대신 화면에 표시하는 **합성 예시 메모를 실제 앱 UI로 촬영**합니다.
+
+GitHub Pages 개인정보처리방침은 https://dla3946gns.github.io/stillnote/privacy/ 에 게시했으며, HTTPS로 실제 본문이 열린 것을 Actions에서 확인했습니다. Play Console은 아직 설정/제출하지 않았습니다.
+
 ## iOS 실행
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
