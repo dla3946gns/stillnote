@@ -7,6 +7,10 @@ on:
       - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 
+concurrency:
+  group: mobile-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android:
     name: Android build and shared checks
