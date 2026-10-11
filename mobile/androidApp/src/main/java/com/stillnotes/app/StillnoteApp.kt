@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
@@ -43,6 +45,13 @@ fun StillnoteApp(
 ) {
     val state = model.state
     val store = model.store
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // Leaving a note editor must not leave the previous text field's IME on the list.
+    LaunchedEffect(state.activeNote?.id) {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun requestAction(action: () -> Unit) {
@@ -91,7 +100,9 @@ fun StillnoteApp(
             }
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+        // adjustResize already sizes the app's content above the IME. Applying
+        // imePadding here as well on some devices collapses the weighted list/editor.
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             if (state.loadFailed) {
                 StorageBanner("저장된 메모를 읽지 못했어요. 원본 파일은 보존됩니다.", "다시 읽기") {
                     store.retryLoad()
@@ -369,7 +380,10 @@ private fun NoteEditor(
             Button(onClick = onSave, enabled = !state.loadFailed) { Text("저장") }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 24.dp, vertical = 20.dp)) {
+        // Allow the entire editor (including title) to scroll when the IME or
+        // accessibility text size leaves less vertical space for composing.
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 20.dp).testTag("note-editor-scroll")) {
             BasicTextField(
                 value = title,
                 onValueChange = { value ->
@@ -398,7 +412,7 @@ private fun NoteEditor(
                 onValueChange = { value -> body = value; onEdit(title.text, value.text) },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+                modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp)
                     .testTag("note-body").semantics { contentDescription = "메모 내용" },
                 decorationBox = { field ->
                     Box {
