@@ -4,6 +4,17 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Some hosted AVD images enable a hardware keyboard and therefore suppress the
+# soft IME. The keyboard-overlap regression must run with a visible soft IME.
+if ! adb shell settings put secure show_ime_with_hard_keyboard 1; then
+    echo "::error::Cannot enable the software keyboard on the emulator"
+    exit 1
+fi
+if [[ "$(adb shell settings get secure show_ime_with_hard_keyboard | tr -d '\r')" != "1" ]]; then
+    echo "::error::Emulator software-keyboard setting did not stick"
+    exit 1
+fi
+
 echo "::group::Android UI tests (light)"
 adb shell cmd uimode night no
 bash ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
