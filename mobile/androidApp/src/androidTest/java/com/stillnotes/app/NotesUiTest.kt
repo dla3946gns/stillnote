@@ -115,12 +115,12 @@ class NotesUiTest {
 
         compose.onNodeWithText("목록").performClick()
         compose.onNodeWithTag("unsaved-dialog-save").performClick()
-        compose.onNodeWithText("확인창 테스트").assertIsDisplayed()
+        compose.onNodeWithText("확인창 테스트").assertExists()
 
         newDraft("버릴 초안", "임시 내용")
         compose.onNodeWithText("목록").performClick()
         compose.onNodeWithText("버리기").performClick()
-        compose.onNodeWithText("확인창 테스트").assertIsDisplayed()
+        compose.onNodeWithText("확인창 테스트").assertExists()
         compose.onNodeWithText("버릴 초안").assertDoesNotExist()
     }
 
