@@ -74,6 +74,16 @@ chmod +x gradlew
 
 APK 위치: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`. 디버그 서명이며 스토어 제출용 빌드가 아닙니다.
 
+## Android 자동 테스트
+
+KMP 공통 `NotesStore`에 대해 Android 호스트 JVM 테스트 14개를 추가했습니다. 작성·명시적 저장·취소, 제목·본문 검색, 고정, 삭제·복원, JSON 백업·가져오기, 저장/읽기 실패 시 데이터 보호를 확인합니다. 메모 재시작 시나리오는 동일한 테스트 저장소에서 `NotesStore`를 새로 생성하는 방식으로 검증합니다.
+
+```sh
+./gradlew :shared:testAndroidHostTest :androidApp:assembleDebug
+```
+
+GitHub Actions는 PR의 코드가 변경될 때 이 명령을 자동 실행하고 테스트 결과 XML을 아티팩트로 업로드합니다. **이 테스트는 공유 도메인 로직의 JVM 테스트**로, Android 기기의 실제 파일 I/O, UI 상호작용, 에뮬레이터 및 실기기 사용성 검증을 대신하지 않습니다. 해당 항목은 이후 별도 QA로 진행해야 합니다.
+
 ## iOS 실행
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
@@ -85,6 +95,8 @@ Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다.
 - 공통 Kotlin 메타데이터 컴파일: 성공.
 - Android APK 빌드: 성공. 저장 처리 보완 후 재빌드도 성공.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행: Windows 환경이므로 미수행.
-- 자동화 테스트·기기 동작 QA·스토어 배포: 미수행.
+- 공통 메모 로직의 Android 호스트 자동 테스트 14개 및 CI 연동: 구현 완료. 최신 CI 통과 여부는 Actions에서 확인해야 합니다.
+- Android 실제 파일 저장·에뮬레이터·실기기 UI QA: 미수행.
+- iOS Swift 컴파일·시뮬레이터·실기기 실행 및 App Store 배포: Mac 환경을 사용할 수 있을 때까지 보류.
 
-다음 단계는 Mac의 iOS 빌드, 두 플랫폼 실기기 입력·백업·저장 동작 확인, 앱 아이콘과 서명 준비입니다.
+다음 단계는 Android 자동 테스트 통과 확인, Android 에뮬레이터 기능 QA, PR #1의 main 병합입니다. iOS는 그동안 출시 준비용 코드와 의존성만 관리합니다.
