@@ -130,6 +130,10 @@ class Demo:
             if target is None:
                 continue
             bounds = self.bounds(target)
+            if field and target.get("class") == "android.widget.ScrollView":
+                placeholder = next((child for child in target.iter("node")
+                                    if child.get("text") == "지금 떠오르는 생각을 적어보세요."), None)
+                bounds = self.bounds(placeholder) if placeholder is not None else None
             if bounds is not None:
                 candidates.append(bounds)
         candidates = list(dict.fromkeys(candidates))
@@ -261,6 +265,9 @@ class Demo:
             self.type_text("메모 제목", FIRST["title"])
             self.type_text("메모 내용", FIRST["body"])
             self.hide_keyboard()
+            saved = self.saved_notes()
+            if len(saved) != 1 or saved[0]["title"] != FIRST["title"] or saved[0]["body"] != FIRST["body"]:
+                raise AssertionError("Title and body input did not reach the intended fields")
             if "기기에 저장됨" not in self.texts():
                 raise AssertionError("First note did not display the saved state")
             self.screenshot("02-first-note")
