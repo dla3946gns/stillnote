@@ -9,7 +9,7 @@
 - **공개 개인정보 및 지원 문의:** dla3946gns@gmail.com
 - **Android 앱:** Stillnote, `com.stillnotes.app`
 - **방침 작성 기준일:** 2026년 10월 12일
-- **웹사이트/정책 URL:** 현재 미보유. [GitHub Pages 게시 절차](PRIVACY_POLICY_PUBLISHING.md)에 따라 게시 후 실제 동작 확인 필요
+- **공개 웹사이트:** https://dla3946gns.github.io/stillnote/\n- **공개 개인정보처리방침:** https://dla3946gns.github.io/stillnote/privacy/ (GitHub Actions #38173211408에서 HTTPS 응답/본문 검증)
 
 ## 코드에서 확인한 데이터 처리
 
@@ -25,7 +25,7 @@
 
 - [ ] **운영 주체의 법적 지위 및 필수 공개 항목** 확인 (등록 사업자명과 실제 Play Console 정보 일치 여부 등)
 - [ ] 이메일 문의 대응·보관·파기 방식, 국외 데이터 이전 및 위탁에 관한 법적 추가 고지가 필요한지 운영자가 확인
-- [ ] Play Console에서 등록할 실제 정책 URL이 로그인 없이 HTTPS로 열리는지 확인
+- [x] 공개 정책 URL의 HTTPS 응답·내용을 GitHub Actions에서 확인 (Play Console에 등록하는 작업은 대기)
 - [ ] 앱 내 `더보기 → 개인정보처리방침`에서 인터넷 없이 동일한 전체 본문이 읽히는지 실기기 확인
 - [ ] 앱에 포함된 SDK/권한과 실제 데이터 흐름이 공개 정책 및 Play Data safety 신고와 일치하는지 점검
 - [ ] 스토어 심사/국내법 검토 후 필요하면 정책 문구·날짜 수정
