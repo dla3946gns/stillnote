@@ -74,6 +74,8 @@ chmod +x gradlew
 
 APK 위치: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`. 디버그 서명이며 스토어 제출용 빌드가 아닙니다.
 
+GitHub Actions가 성공하면 `stillnote-android-debug-apk` 아티팩트에 개발용 APK도 보관합니다. 실제 Android 기기의 설치·JSON 백업·복원은 [실기기 QA 체크리스트](ANDROID_DEVICE_QA.md)를 따르세요. **디버그 APK의 서명이 기존 설치 앱과 다를 수 있으므로, 기기 메모를 백업하기 전에 앱을 삭제하거나 재설치하지 마세요.**
+
 ## Android 자동 테스트
 
 KMP 공통 `NotesStore`에 대해 Android 호스트 JVM 테스트 14개를 추가했습니다. 작성·명시적 저장·취소, 제목·본문 검색, 고정, 삭제·복원, JSON 백업·가져오기, 저장/읽기 실패 시 데이터 보호를 확인합니다. 추가 Android 파일 저장 테스트 3개는 실제 임시 디렉터리에 파일을 작성하고, 스토어 재생성 이후 복원·쓰기 실패 시 이전 데이터 보존·손상된 UTF-8 파일 보호를 검증합니다. 총 17개의 JVM 테스트입니다.
@@ -88,7 +90,7 @@ GitHub Actions는 PR의 코드가 변경될 때 이 명령을 자동 실행하�
 ./gradlew :androidApp:connectedDebugAndroidTest
 ```
 
-에뮬레이터 검증은 실제 물리 기기의 성능·키보드 호환성, 제조사별 동작, Android 문서 선택기를 통한 백업 입출력을 완전히 대체하지는 못합니다.
+에뮬레이터 검증은 실제 물리 기기의 성능·키보드 호환성, 제조사별 동작, Android 문서 선택기를 통한 백업 입출력을 완전히 대체하지는 못합니다. 이를 보완하기 위해 Android Downloads 공급자의 `ContentResolver`를 사용하는 JSON 백업 입출력 계측 테스트 5개도 추가했습니다. 이 테스트는 실제 파일 스트림과 복원 로직을 확인하지만 **시스템 파일 선택기 UI를 직접 누르는 테스트는 아니므로 실기기 QA가 여전히 필요합니다.**
 
 ## iOS 실행
 
@@ -101,9 +103,9 @@ Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다.
 - 공통 Kotlin 메타데이터 컴파일: 성공.
 - Android APK 빌드: 성공. 저장 처리 보완 후 재빌드도 성공.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행: Windows 환경이므로 미수행.
-- 공통 메모 로직 14개와 Android 파일 저장 3개의 자동 테스트 및 CI 연동: 구현 완료. 최신 CI 통과 여부는 Actions에서 확인해야 합니다.
-- Android API 35 에뮬레이터 Compose UI 계측 테스트: 코드/CI 구성 완료. 실행 결과는 Actions에서 확인해야 합니다.
-- Android 실제 기기 UI·제조사별 동작 및 시스템 파일 선택기를 통한 백업 QA: 미수행.
+- 공통 메모 로직 14개, Android 파일 저장 호스트 테스트 3개, API 35 에뮬레이터 Compose UI 테스트 7개(라이트·다크 모드): GitHub Actions #39에서 통과했습니다.
+- Android 문서 공급자를 통한 UTF-8 JSON 백업 입출력 계측 테스트 5개: QA PR에서 구현했으며 해당 PR의 최신 CI에서 결과 확인이 필요합니다.
+- 실제 기기 UI·제조사별 동작·시스템 문서 선택기 백업 QA: 미수행. [체크리스트](ANDROID_DEVICE_QA.md) 참조.
 - iOS Swift 컴파일·시뮬레이터·실기기 실행 및 App Store 배포: Mac 환경을 사용할 수 있을 때까지 보류.
 
-다음 단계는 Android 에뮬레이터 계측 테스트 통과 확인, 필요한 UI 수정, 실기기·백업 QA 후 PR #1의 main 병합입니다. iOS는 그동안 출시 준비용 코드와 의존성만 관리합니다.
+Android 기본 앱/자동 테스트는 PR #1을 통해 `main`에 병합됐습니다. 실기기용 QA 개선은 후속 PR로 검증하고, 실제 휴대전화에서 남은 체크리스트를 완료하기 전까지 스토어 배포는 보류합니다.
