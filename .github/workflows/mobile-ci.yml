@@ -77,6 +77,61 @@ jobs:
           # Never upload this bundle: its key is discarded after this step.
           rm -f "$BUNDLE"
 
+  android-upgrade:
+    name: Android in-place upgrade preserves saved notes
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      # Checkout exactly the old base commit and the candidate commit.
+      # Build both on the SAME runner so they use the SAME debug signing key.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: baseline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install compilation SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Build existing-main APK and its UI test APK
+        working-directory: baseline/mobile
+        run: bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
+      - name: Build candidate APK with higher versionCode
+        working-directory: candidate/mobile
+        # Override only inside this verification, never bump the production code.
+        run: bash ./gradlew :androidApp:assembleDebug -PstillnoteVersionCode=2 --stacktrace
+      - name: Enable hardware-accelerated Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install baseline, save a real memo, update in place and verify bytes
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          script: bash candidate/mobile/scripts/run-upgrade-preservation-test.sh baseline/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk baseline/mobile/androidApp/build/outputs/apk/androidTest/debug/androidApp-debug-androidTest.apk candidate/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+
   emulator-ui:
     name: Android emulator UI (light and dark)
     needs: android

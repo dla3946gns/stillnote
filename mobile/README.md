@@ -98,6 +98,12 @@ Google Play 업로드용 AAB는 소유자만 보유한 **업로드 서명키**�
 
 **서명키 생성·백업, GitHub 환경 Secret 등록, 수동 릴리스 빌드와 Play Console 내부 테스트 절차는 [Android 릴리스 가이드](ANDROID_RELEASE.md)를 참고하세요.** 현재 자동 Play Store 게시 기능은 없고, CI에서 업로드 키를 생성하거나 보관하지 않습니다.
 
+## APK 업데이트·Play 등록정보 준비
+
+PR CI에 **이전 main 빌드에서 실제 메모를 생성하고 새 APK를 `adb install -r`로 덮어쓴 뒤 내부 저장 파일이 유지되는지** 확인하는 별도 에뮬레이터 회귀 테스트를 추가했습니다. 이 테스트는 테스트용 디버그 서명키로 검증하는 것으로, 나중에 진행할 **Google Play 서명 앱의 실제 업데이트 테스트를 대신하지 않습니다**.
+
+개발자 계정 없이 작성 가능한 [Play 등록정보 문구 초안](PLAY_STORE_LISTING_DRAFT.md)과 [개인정보처리방침 초안](PRIVACY_POLICY_DRAFT.md)도 추가했습니다. **소유자 정보·정책 URL·앱 내부 개인정보 고지는 아직 미확정**이므로 Play Console 제출 전 반드시 확인해야 합니다. 현재 앱은 사용자 계정·자동 동기화 기능을 제공하지 않습니다.
+
 ## iOS 실행
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
