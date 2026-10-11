@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -252,7 +253,7 @@ private fun NotesList(
         OutlinedTextField(
             value = state.query,
             onValueChange = onQuery,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("notes-search"),
             label = { Text("메모 검색") },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -375,7 +376,7 @@ private fun NoteEditor(
                 textStyle = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "메모 제목" },
+                modifier = Modifier.fillMaxWidth().testTag("note-title").semantics { contentDescription = "메모 제목" },
                 decorationBox = { field ->
                     Box {
                         if (title.text.isEmpty()) Text("제목", style = MaterialTheme.typography.headlineSmall,
@@ -393,7 +394,7 @@ private fun NoteEditor(
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-                    .semantics { contentDescription = "메모 내용" },
+                    .testTag("note-body").semantics { contentDescription = "메모 내용" },
                 decorationBox = { field ->
                     Box {
                         if (body.text.isEmpty()) Text("지금 떠오르는 생각을 적어보세요.",
