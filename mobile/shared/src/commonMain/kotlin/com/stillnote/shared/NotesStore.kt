@@ -134,9 +134,14 @@ class NotesStore(private val storage: NotesStorage) {
         if (!canWrite()) return
         val note = notes.find { it.id == id } ?: return
         val updated = note.copy(pinned = !note.pinned)
-        notes = notes.map { if (it.id == id) updated else it }
+        val candidate = notes.map { if (it.id == id) updated else it }
+        if (!persist(candidate)) {
+            publish()
+            return
+        }
+        notes = candidate
         if (draft?.id == id) draft = draft?.copy(pinned = updated.pinned)
-        if (persist()) message = if (updated.pinned) "메모를 고정했어요." else "고정을 해제했어요."
+        message = if (updated.pinned) "메모를 고정했어요." else "고정을 해제했어요."
         publish()
     }
 
@@ -176,14 +181,19 @@ class NotesStore(private val storage: NotesStorage) {
         if (!canWrite()) return
         val index = notes.indexOfFirst { it.id == id }
         if (index < 0) return
+        val candidate = notes.filter { it.id != id }
+        if (!persist(candidate)) {
+            publish()
+            return
+        }
         deletedNote = notes[index]
         deletedIndex = index
-        notes = notes.filter { it.id != id }
+        notes = candidate
         if (activeId == id) {
             draft = notes.maxByOrNull { it.updatedAt }
             activeId = draft?.id
         }
-        if (persist()) message = "메모를 삭제했어요."
+        message = "메모를 삭제했어요."
         publish()
     }
 
