@@ -104,6 +104,14 @@ PR CI에 **이전 main 빌드에서 실제 메모를 생성하고 새 APK를 `ad
 
 개발자 계정 없이 작성 가능한 [Play 등록정보 문구 초안](PLAY_STORE_LISTING_DRAFT.md)과 [개인정보처리방침 초안](PRIVACY_POLICY_DRAFT.md)도 추가했습니다. **소유자 정보·정책 URL·앱 내부 개인정보 고지는 아직 미확정**이므로 Play Console 제출 전 반드시 확인해야 합니다. 현재 앱은 사용자 계정·자동 동기화 기능을 제공하지 않습니다.
 
+## 개인정보처리방침 및 Play 스토어 공개 준비
+
+사용자가 지정한 운영 주체 **Anna Johnny Works**와 공개 문의 이메일 **dla3946gns@gmail.com**을 정책 문서와 Android 앱에 반영했습니다. 앱 내 `더보기 → 개인정보처리방침`을 누르면 인터넷 없이 정책 전문을 확인할 수 있습니다.
+
+- [오프라인 앱 정책 원문](androidApp/src/main/assets/privacy-policy-ko.txt)과 [웹 공개용 정책 HTML](../docs/privacy/index.html)은 CI에서 내용 일치를 검사합니다.
+- [GitHub Pages 게시 절차](PRIVACY_POLICY_PUBLISHING.md)에 따라 저장소 소유자가 `main /docs` 소스를 활성화하고, 사이트에 실제 HTTPS로 접근할 수 있는지 확인해야 합니다. **아직 공개 웹 URL의 활성화는 확인되지 않았습니다.**
+- [Play 스토어 등록정보 초안](PLAY_STORE_LISTING_DRAFT.md)에 운영 주체/지원 이메일을 반영했지만, 실제 사업자 정보·정책 URL·스크린샷·개인정보 관련 Play Console 신고는 최종 검토가 필요합니다.
+
 ## iOS 실행
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
