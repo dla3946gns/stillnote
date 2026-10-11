@@ -42,3 +42,61 @@ jobs:
             mobile/shared/build/test-results/testAndroidHostTest/
             mobile/androidApp/build/test-results/testDebugUnitTest/
           if-no-files-found: ignore
+
+  emulator-ui:
+    name: Android emulator UI (light and dark)
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Enable KVM for hardware-accelerated emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Android compilation SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Run Compose UI journeys on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          script: |
+            set +e
+            cd mobile
+            adb shell cmd uimode night no
+            bash ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
+            light_exit=$?
+            adb shell cmd uimode night yes
+            bash ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks --stacktrace
+            dark_exit=$?
+            mkdir -p androidApp/build/qa-screenshots
+            adb pull /sdcard/Android/data/com.stillnotes.app/files/qa/. androidApp/build/qa-screenshots/ || true
+            if [ "$light_exit" -ne 0 ] || [ "$dark_exit" -ne 0 ]; then exit 1; fi
+      - name: Upload emulator test reports and theme captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-qa
+          path: |
+            mobile/androidApp/build/outputs/androidTest-results/connected/
+            mobile/androidApp/build/reports/androidTests/connected/
+            mobile/androidApp/build/qa-screenshots/
+          if-no-files-found: warn
