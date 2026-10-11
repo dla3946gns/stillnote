@@ -134,9 +134,19 @@ class NotesUiTest {
         compose.onNodeWithText("둘째 메모").assertDoesNotExist()
 
         compose.onNodeWithTag("notes-search").performTextReplacement("없는 검색어")
-        compose.onNodeWithText("검색 결과가 없어요").assertIsDisplayed()
+        compose.waitForIdle()
+        // The software keyboard may obscure the empty-state message. Verify the
+        // filtered list is truly empty rather than relying on on-screen visibility.
+        compose.onNodeWithText("0개").assertExists()
+        compose.onNodeWithText("검색 결과가 없어요").assertExists()
+        compose.onNodeWithText("첫 번째 메모").assertDoesNotExist()
+        compose.onNodeWithText("둘째 메모").assertDoesNotExist()
+
         compose.onNodeWithTag("notes-search").performTextReplacement("")
-        compose.onNodeWithText("2개").assertIsDisplayed()
+        compose.waitForIdle()
+        compose.onNodeWithText("2개").assertExists()
+        compose.onNodeWithText("첫 번째 메모").assertExists()
+        compose.onNodeWithText("둘째 메모").assertExists()
     }
 
     @Test
