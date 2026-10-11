@@ -54,6 +54,29 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Smoke-test signed release AAB using a disposable CI-only key
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEMP_DIR="$(mktemp -d "$RUNNER_TEMP/stillnote-release-smoke.XXXXXX")"
+          trap 'rm -rf "$TEMP_DIR"' EXIT
+          keytool -genkeypair -noprompt -storetype PKCS12 \
+            -keystore "$TEMP_DIR/ci-only.p12" -alias ci-smoke \
+            -storepass ci-only-not-for-release -keypass ci-only-not-for-release \
+            -keyalg RSA -keysize 3072 -validity 1 \
+            -dname "CN=Disposable Stillnote CI Smoke Key" >/dev/null 2>&1
+          export STILLNOTE_UPLOAD_KEYSTORE="$TEMP_DIR/ci-only.p12"
+          export STILLNOTE_UPLOAD_STORE_PASSWORD="ci-only-not-for-release"
+          export STILLNOTE_UPLOAD_KEY_ALIAS="ci-smoke"
+          export STILLNOTE_UPLOAD_KEY_PASSWORD="ci-only-not-for-release"
+          bash ./gradlew :androidApp:bundleRelease --stacktrace
+          BUNDLE="androidApp/build/outputs/bundle/release/androidApp-release.aab"
+          test -s "$BUNDLE"
+          jarsigner -verify "$BUNDLE" > "$TEMP_DIR/verification.txt"
+          grep -q "jar verified" "$TEMP_DIR/verification.txt"
+          # Never upload this bundle: its key is discarded after this step.
+          rm -f "$BUNDLE"
+
   emulator-ui:
     name: Android emulator UI (light and dark)
     needs: android
