@@ -5,12 +5,6 @@ on:
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-ci.yml'
-  push:
-    branches:
-      - codex/kmp-native-apps-20261011
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 
 jobs:
@@ -37,5 +31,12 @@ jobs:
           test -n "$SDKMANAGER" || { echo 'Android SDK command-line tools missing'; exit 1; }
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
-      - name: Gradle build and checks
-        run: bash ./gradlew :shared:compileKotlinMetadata :androidApp:assembleDebug --stacktrace
+      - name: Shared notes host tests and Android build
+        run: bash ./gradlew :shared:testAndroidHostTest :androidApp:assembleDebug --stacktrace
+      - name: Upload notes test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-host-test-results
+          path: mobile/shared/build/test-results/testAndroidHostTest/
+          if-no-files-found: ignore
