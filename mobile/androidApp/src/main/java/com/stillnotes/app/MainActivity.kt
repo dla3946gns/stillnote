@@ -14,8 +14,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.io.InputStreamReader
-import java.nio.charset.CodingErrorAction
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,9 +34,7 @@ private fun AndroidNotesApp(model: NotesViewModel = viewModel()) {
         model.pendingDocument = null
         if (uri == null || content == null) return
         try {
-            val stream = context.contentResolver.openOutputStream(uri, "wt")
-                ?: error("No document stream")
-            stream.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+            AndroidDocumentIo.writeUtf8(context.contentResolver, uri, content)
             model.platformMessage = "파일을 저장했어요."
         } catch (_: Exception) {
             model.platformMessage = "파일을 저장하지 못했어요. 다시 시도해 주세요."
@@ -53,12 +49,7 @@ private fun AndroidNotesApp(model: NotesViewModel = viewModel()) {
     val backupImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             try {
-                val stream = context.contentResolver.openInputStream(uri)
-                    ?: error("No document stream")
-                val decoder = Charsets.UTF_8.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT)
-                model.pendingImport = InputStreamReader(stream, decoder).use { it.readText() }
+                model.pendingImport = AndroidDocumentIo.readUtf8(context.contentResolver, uri)
             } catch (_: Exception) {
                 model.platformMessage = "백업 파일을 읽지 못했어요. 다른 파일을 선택해 주세요."
             }

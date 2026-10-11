@@ -46,6 +46,13 @@ jobs:
             mobile/shared/build/test-results/testAndroidHostTest/
             mobile/androidApp/build/test-results/testDebugUnitTest/
           if-no-files-found: ignore
+      - name: Upload debug APK for physical-device QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: stillnote-android-debug-apk
+          path: mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          if-no-files-found: error
+          retention-days: 14
 
   emulator-ui:
     name: Android emulator UI (light and dark)
