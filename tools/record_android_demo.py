@@ -88,12 +88,21 @@ class Demo:
         self.event(name, status="completed")
 
     def ui(self):
-        self.adb("shell", "uiautomator", "dump", self.remote_xml, timeout=20)
-        xml = self.adb("shell", "cat", self.remote_xml)
-        (self.output / "last-ui.xml").write_text(xml, encoding="utf-8")
-        root = ET.fromstring(xml)
-        parents = {child: parent for parent in root.iter() for child in parent}
-        return root, parents
+        for attempt in range(3):
+            self.adb("shell", "rm", "-f", self.remote_xml)
+            dump = self.adb("shell", "uiautomator", "dump", self.remote_xml, timeout=20, binary=True)
+            with (self.output / "ui-dump.log").open("ab") as log:
+                log.write(dump.stdout + dump.stderr)
+            result = self.adb("shell", "cat", self.remote_xml, check=False, binary=True)
+            if result.returncode == 0:
+                xml = result.stdout.decode("utf-8")
+                root = ET.fromstring(xml)
+                (self.output / "last-ui.xml").write_text(xml, encoding="utf-8")
+                parents = {child: parent for parent in root.iter() for child in parent}
+                return root, parents
+            if attempt < 2:
+                time.sleep(1)
+        raise RuntimeError("UI hierarchy was unavailable after three observations; see ui-dump.log")
 
     @staticmethod
     def bounds(node):
@@ -239,8 +248,8 @@ class Demo:
     def run(self):
         if self.saved_notes(check=False):
             raise RuntimeError("Refusing to modify an emulator containing existing notes")
-        self.adb("shell", "am", "start", "-n", ACTIVITY)
-        time.sleep(2)
+        self.adb("shell", "am", "start", "-W", "-n", ACTIVITY)
+        time.sleep(5)
         texts = self.texts()
         if "아직 메모가 없어요" not in texts or "0개" not in texts:
             raise RuntimeError("A fresh empty Stillnote app on a phone-sized emulator is required")
