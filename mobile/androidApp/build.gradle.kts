@@ -95,7 +95,8 @@ tasks.register("verifyReleaseSigning") {
                 "STILLNOTE_UPLOAD_STORE_PASSWORD, STILLNOTE_UPLOAD_KEY_ALIAS and " +
                 "STILLNOTE_UPLOAD_KEY_PASSWORD. Do not use a debug key for Play releases."
         }
-        check(file(uploadKeystore!!).isFile && file(uploadKeystore).length() > 0L) {
+        val uploadKeyFile = file(uploadKeystore!!)
+        check(uploadKeyFile.isFile && uploadKeyFile.length() > 0L) {
             "The configured upload keystore path does not point to a non-empty file."
         }
     }
