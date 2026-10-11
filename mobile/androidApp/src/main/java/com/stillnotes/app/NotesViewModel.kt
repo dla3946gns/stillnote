@@ -1,4 +1,4 @@
-package com.stillnote.app
+package com.stillnotes.app
 
 import android.app.Application
 import androidx.compose.runtime.getValue

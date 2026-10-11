@@ -5,6 +5,7 @@ import UIKit
 
 @MainActor
 struct NotesView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = NotesModel()
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var importing = false
@@ -13,9 +14,31 @@ struct NotesView: View {
     @State private var backupFilename = "memo-backup"
     @State private var exportContentType: UTType = .json
     @State private var fileError: String?
+    @State private var pendingAction: PendingAction?
+    @State private var confirmingUnsavedChanges = false
+
+    private enum PendingAction {
+        case select(String?)
+        case create
+        case togglePin(String)
+        case duplicate(String)
+        case delete(String)
+        case undoDelete
+        case beginImport
+        case importBackup(String)
+    }
 
     var body: some View {
-        NavigationSplitView(preferredCompactColumn: $compactColumn) {
+        NavigationSplitView(preferredCompactColumn: Binding(
+            get: { compactColumn },
+            set: { column in
+                if column == .sidebar && horizontalSizeClass == .compact && model.activeID != nil {
+                    request(.select(nil))
+                } else {
+                    compactColumn = column
+                }
+            }
+        )) {
             sidebar
                 .navigationTitle("Stillnote")
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 380)
@@ -31,7 +54,15 @@ struct NotesView: View {
                 }
                 .background(Theme.ivory)
             } else if let note = model.state.activeNote {
-                NoteEditor(model: model, noteID: note.id, exportText: exportText)
+                NoteEditor(
+                    model: model,
+                    noteID: note.id,
+                    exportText: exportText,
+                    close: { request(.select(nil)) },
+                    togglePin: { request(.togglePin(note.id)) },
+                    duplicate: { request(.duplicate(note.id)) },
+                    delete: { request(.delete(note.id)) }
+                )
                     .id(note.id)
             } else {
                 emptyEditor
@@ -51,7 +82,7 @@ struct NotesView: View {
                 guard let url = try result.get().first else { return }
                 let access = url.startAccessingSecurityScopedResource()
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
-                model.importBackup(try String(contentsOf: url, encoding: .utf8))
+                request(.importBackup(try String(contentsOf: url, encoding: .utf8)))
             } catch { fileError = error.localizedDescription }
         }
         .fileExporter(
@@ -70,19 +101,73 @@ struct NotesView: View {
         } message: {
             Text(fileError ?? "")
         }
+        .alert("변경 내용을 저장할까요?", isPresented: $confirmingUnsavedChanges) {
+            Button("저장") {
+                guard model.save() else {
+                    pendingAction = nil
+                    return
+                }
+                finishPendingAction()
+            }
+            Button("버리기", role: .destructive) {
+                model.cancel()
+                finishPendingAction()
+            }
+            Button("계속 편집", role: .cancel) { pendingAction = nil }
+        } message: {
+            Text("저장하지 않은 변경 내용이 있어요.")
+        }
+    }
+
+    private func request(_ action: PendingAction) {
+        if case .select(let id) = action, id == model.activeID {
+            if id != nil { compactColumn = .detail }
+            return
+        }
+        if model.state.hasUnsavedChanges {
+            pendingAction = action
+            confirmingUnsavedChanges = true
+        } else {
+            if model.state.saveFailed { model.cancel() }
+            perform(action)
+        }
+    }
+
+    private func finishPendingAction() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+        perform(action)
+    }
+
+    private func perform(_ action: PendingAction) {
+        switch action {
+        case .select(let id): model.select(id)
+        case .create: model.create()
+        case .togglePin(let id): model.togglePin(id: id)
+        case .duplicate(let id): model.duplicate(id: id)
+        case .delete(let id): model.delete(id: id)
+        case .undoDelete: model.undoDelete()
+        case .beginImport: importing = true
+        case .importBackup(let content): model.importBackup(content)
+        }
     }
 
     private var sidebar: some View {
-        List(selection: Binding(get: { model.activeID }, set: model.select)) {
+        List {
             Section {
                 ForEach(model.visibleNotes, id: \.id) { note in
-                    NavigationLink(value: note.id) {
+                    Button {
+                        request(.select(note.id))
+                    } label: {
                         NoteRow(note: note)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(model.activeID == note.id ? Theme.apricot : Color.clear)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
-                            model.togglePin(id: note.id)
+                            request(.togglePin(note.id))
                         } label: {
                             Label(note.pinned ? "고정 해제" : "고정", systemImage: note.pinned ? "pin.slash" : "pin")
                         }
@@ -90,10 +175,10 @@ struct NotesView: View {
                     }
                     .contextMenu {
                         Button(note.pinned ? "고정 해제" : "고정", systemImage: "pin") {
-                            model.togglePin(id: note.id)
+                            request(.togglePin(note.id))
                         }
                         Button("복제", systemImage: "plus.square.on.square") {
-                            model.duplicate(id: note.id)
+                            request(.duplicate(note.id))
                         }
                     }
                 }
@@ -125,7 +210,7 @@ struct NotesView: View {
                     } else if model.state.pinnedOnly {
                         Button("모든 메모 보기") { model.setPinnedOnly(false) }
                     } else {
-                        Button("첫 메모 쓰기", action: model.create)
+                        Button("첫 메모 쓰기") { request(.create) }
                     }
                 }
             }
@@ -153,13 +238,13 @@ struct NotesView: View {
                     }
                     .disabled(model.state.loadFailed)
                     Button("백업 가져오기", systemImage: "square.and.arrow.down") {
-                        importing = true
+                        request(.beginImport)
                     }
                     .disabled(model.state.loadFailed || model.state.saveFailed)
                 } label: {
                     Label("백업", systemImage: "ellipsis")
                 }
-                Button("새 메모", systemImage: "square.and.pencil", action: model.create)
+                Button("새 메모", systemImage: "square.and.pencil") { request(.create) }
                     .disabled(model.state.loadFailed)
             }
         }
@@ -184,7 +269,7 @@ struct NotesView: View {
             } description: {
                 Text("메모를 선택하거나 새 메모를 작성해 보세요.")
             } actions: {
-                Button("새 메모", systemImage: "plus", action: model.create)
+                Button("새 메모", systemImage: "plus") { request(.create) }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -210,7 +295,7 @@ struct NotesView: View {
                     .lineLimit(2)
                 Spacer()
                 if model.state.canUndoDelete {
-                    Button("실행 취소", action: model.undoDelete)
+                    Button("실행 취소") { request(.undoDelete) }
                 } else {
                     Button("닫기", systemImage: "xmark", action: model.clearMessage)
                         .labelStyle(.iconOnly)
@@ -252,22 +337,38 @@ private struct NoteRow: View {
 
 @MainActor
 private struct NoteEditor: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let model: NotesModel
     let noteID: String
     let exportText: (String) -> Void
+    let close: () -> Void
+    let togglePin: () -> Void
+    let duplicate: () -> Void
+    let delete: () -> Void
     @State private var deleting = false
     @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label(model.state.saveFailed ? "저장 재시도 필요" : "이 기기에 자동 저장", systemImage: model.state.saveFailed ? "exclamationmark.circle" : "checkmark.circle")
+                Label(
+                    model.state.saveFailed ? "저장 재시도 필요" : model.state.hasUnsavedChanges ? "저장하지 않은 변경" : "저장됨",
+                    systemImage: model.state.saveFailed ? "exclamationmark.circle" : model.state.hasUnsavedChanges ? "pencil.circle" : "checkmark.circle"
+                )
                 Spacer()
                 Text("\(model.note(id: noteID)?.body.count ?? 0)자")
                     .monospacedDigit()
             }
             .font(.caption)
             .foregroundStyle(Theme.muted)
+
+            HStack(spacing: 12) {
+                Button("취소", action: model.cancel)
+                    .buttonStyle(.bordered)
+                Button("저장") { _ = model.save() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .disabled(!model.state.hasUnsavedChanges && !model.state.saveFailed)
 
             LimitedTitleField(text: Binding(
                 get: { model.note(id: noteID)?.title ?? "" },
@@ -296,13 +397,20 @@ private struct NoteEditor: View {
         .background(Theme.ivory)
         .navigationTitle("메모")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden()
         .toolbar {
+            if horizontalSizeClass == .compact {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("목록", systemImage: "chevron.left", action: close)
+                }
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
-                    model.togglePin(id: noteID)
+                    togglePin()
                 } label: {
                     Label(model.note(id: noteID)?.pinned == true ? "고정 해제" : "고정", systemImage: model.note(id: noteID)?.pinned == true ? "pin.fill" : "pin")
                 }
+                .disabled(model.state.isNewNote)
                 Menu {
                     Button(copied ? "복사했어요" : "복사", systemImage: "doc.on.doc") {
                         UIPasteboard.general.string = model.text(id: noteID)
@@ -312,16 +420,18 @@ private struct NoteEditor: View {
                         Label("공유", systemImage: "square.and.arrow.up")
                     }
                     Button("텍스트 파일 내보내기", systemImage: "doc.text") { exportText(noteID) }
-                    Button("복제", systemImage: "plus.square.on.square") { model.duplicate(id: noteID) }
+                    Button("복제", systemImage: "plus.square.on.square", action: duplicate)
+                        .disabled(model.state.isNewNote)
                     Divider()
                     Button("삭제", systemImage: "trash", role: .destructive) { deleting = true }
+                        .disabled(model.state.isNewNote)
                 } label: {
                     Label("메모 작업", systemImage: "ellipsis")
                 }
             }
         }
         .confirmationDialog("메모를 삭제할까요?", isPresented: $deleting, titleVisibility: .visible) {
-            Button("메모 삭제", role: .destructive) { model.delete(id: noteID) }
+            Button("메모 삭제", role: .destructive, action: delete)
             Button("취소", role: .cancel) { }
         } message: {
             Text("삭제한 뒤 실행 취소로 복원할 수 있어요.")

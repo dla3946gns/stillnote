@@ -4,6 +4,8 @@ data class NotesState(
     val notes: List<Note>,
     val visibleNotes: List<Note>,
     val activeNote: Note?,
+    val hasUnsavedChanges: Boolean,
+    val isNewNote: Boolean,
     val query: String,
     val pinnedOnly: Boolean,
     val saveFailed: Boolean,

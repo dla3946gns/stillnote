@@ -18,9 +18,11 @@ class NotesStore(private val storage: NotesStorage) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private var notes = emptyList<Note>()
     private var activeId: String? = null
+    private var draft: Note? = null
     private var query = ""
     private var pinnedOnly = false
     private var saveFailed = false
+    private var saveFailureBeforeDraft: Boolean? = null
     private var loadFailed = false
     private var message: String? = null
     private var deletedNote: Note? = null
@@ -50,35 +52,71 @@ class NotesStore(private val storage: NotesStorage) {
         if (!canWrite()) return null
         val now = Clock.System.now().toEpochMilliseconds()
         val note = Note(Uuid.random().toString(), "", "", now, now)
-        notes = notes + note
         activeId = note.id
+        draft = note
         query = ""
         pinnedOnly = false
         message = null
-        persist()
         publish()
         return note.id
     }
 
     fun selectNote(id: String) {
-        if (notes.none { it.id == id }) return
+        if (activeId == id) return
+        val note = notes.find { it.id == id } ?: return
         activeId = id
+        draft = note
         publish()
     }
 
     fun closeNote() {
         activeId = null
+        draft = null
         publish()
     }
 
     fun updateNote(id: String, title: String, body: String) {
         if (!canWrite()) return
-        val note = notes.find { it.id == id } ?: return
+        val note = draft?.takeIf { it.id == id } ?: return
         if (note.title == title && note.body == body) return
-        val updated = note.copy(title = title, body = body, updatedAt = Clock.System.now().toEpochMilliseconds())
-        notes = notes.map { if (it.id == id) updated else it }
+        draft = note.copy(title = title, body = body)
         message = null
-        persist()
+        publish()
+    }
+
+    fun saveNote(): Boolean {
+        if (!canWrite()) return false
+        val note = draft ?: return false
+        if (!hasUnsavedChanges()) {
+            if (!saveFailed) return true
+            val saved = persist()
+            if (saved) message = "변경 내용을 저장했어요."
+            publish()
+            return saved
+        }
+        val saved = note.copy(updatedAt = Clock.System.now().toEpochMilliseconds())
+        val candidate = if (notes.any { it.id == saved.id }) {
+            notes.map { if (it.id == saved.id) saved else it }
+        } else {
+            notes + saved
+        }
+        if (!persist(candidate, draftSave = true)) {
+            publish()
+            return false
+        }
+        notes = candidate
+        draft = saved
+        message = "메모를 저장했어요."
+        publish()
+        return true
+    }
+
+    fun cancelEdit() {
+        draft = notes.find { it.id == activeId }
+        if (draft == null) activeId = null
+        saveFailureBeforeDraft?.let { saveFailed = it }
+        saveFailureBeforeDraft = null
+        if (!saveFailed) message = null
         publish()
     }
 
@@ -97,6 +135,7 @@ class NotesStore(private val storage: NotesStorage) {
         val note = notes.find { it.id == id } ?: return
         val updated = note.copy(pinned = !note.pinned)
         notes = notes.map { if (it.id == id) updated else it }
+        if (draft?.id == id) draft = draft?.copy(pinned = updated.pinned)
         if (persist()) message = if (updated.pinned) "메모를 고정했어요." else "고정을 해제했어요."
         publish()
     }
@@ -127,6 +166,7 @@ class NotesStore(private val storage: NotesStorage) {
             pinnedOnly = false
             query = ""
         }
+        draft = duplicate
         message = "메모를 복제했어요."
         publish()
         return duplicate.id
@@ -139,7 +179,10 @@ class NotesStore(private val storage: NotesStorage) {
         deletedNote = notes[index]
         deletedIndex = index
         notes = notes.filter { it.id != id }
-        if (activeId == id) activeId = notes.maxByOrNull { it.updatedAt }?.id
+        if (activeId == id) {
+            draft = notes.maxByOrNull { it.updatedAt }
+            activeId = draft?.id
+        }
         if (persist()) message = "메모를 삭제했어요."
         publish()
     }
@@ -164,11 +207,16 @@ class NotesStore(private val storage: NotesStorage) {
             return
         }
         deletedNote = null
+        draft = note
         message = "메모를 복원했어요."
         publish()
     }
 
     fun retrySave() {
+        if (hasUnsavedChanges()) {
+            saveNote()
+            return
+        }
         if (!canWrite()) return
         if (persist()) message = "변경 내용을 저장했어요."
         publish()
@@ -208,20 +256,26 @@ class NotesStore(private val storage: NotesStorage) {
             publish()
             return
         }
-        if (activeId == null) activeId = additions.maxByOrNull { it.updatedAt }?.id
+        if (activeId == null) {
+            draft = additions.maxByOrNull { it.updatedAt }
+            activeId = draft?.id
+        }
         message = "${additions.size}개 메모를 불러왔어요." +
             if (imported.size > additions.size) " 같은 ID의 메모는 건너뛰었어요." else ""
         publish()
     }
 
-    fun textForNote(id: String): String = notes.find { it.id == id }?.textContent.orEmpty()
+    fun textForNote(id: String): String =
+        (draft?.takeIf { it.id == id } ?: notes.find { it.id == id })?.textContent.orEmpty()
 
     private fun load() {
         try {
             val loaded = storage.read()?.let(::parseNotes).orEmpty().distinctBy { it.id }
             notes = loaded
             activeId = loaded.maxByOrNull { it.updatedAt }?.id
+            draft = loaded.find { it.id == activeId }
             saveFailed = false
+            saveFailureBeforeDraft = null
             loadFailed = false
             message = null
         } catch (_: Exception) {
@@ -238,11 +292,17 @@ class NotesStore(private val storage: NotesStorage) {
         return false
     }
 
-    private fun persist(): Boolean = try {
-        storage.write(json.encodeToString(notes))
+    private fun persist(candidate: List<Note> = notes, draftSave: Boolean = false): Boolean = try {
+        storage.write(json.encodeToString(candidate))
         saveFailed = false
+        saveFailureBeforeDraft = null
         true
     } catch (_: Exception) {
+        if (draftSave) {
+            if (saveFailureBeforeDraft == null) saveFailureBeforeDraft = saveFailed
+        } else if (saveFailureBeforeDraft != null) {
+            saveFailureBeforeDraft = true
+        }
         saveFailed = true
         message = "메모를 저장하지 못했어요. 저장을 다시 시도해 주세요."
         false
@@ -274,7 +334,9 @@ class NotesStore(private val storage: NotesStorage) {
         return NotesState(
             notes = notes.toList(),
             visibleNotes = visible,
-            activeNote = notes.find { it.id == activeId },
+            activeNote = draft,
+            hasUnsavedChanges = hasUnsavedChanges(),
+            isNewNote = draft?.let { note -> notes.none { it.id == note.id } } == true,
             query = query,
             pinnedOnly = pinnedOnly,
             saveFailed = saveFailed,
@@ -283,6 +345,9 @@ class NotesStore(private val storage: NotesStorage) {
             canUndoDelete = deletedNote != null,
         )
     }
+
+    private fun hasUnsavedChanges(): Boolean =
+        draft?.let { note -> note != notes.find { it.id == note.id } } == true
 
     private fun publish() {
         state = snapshot()

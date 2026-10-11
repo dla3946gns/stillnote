@@ -15,7 +15,7 @@ mobile/
 
 ## 구현한 기능
 
-- 메모 생성·편집·자동 저장, 제목·본문 검색, 최신 수정 순 정렬
+- 메모 생성·편집, 저장·취소, 미저장 변경 확인, 제목·본문 검색, 최신 수정 순 정렬
 - 메모 고정·고정 필터, 복제, 삭제 확인·실행 취소
 - 내용 복사·시스템 공유, 현재 메모 텍스트 파일 내보내기
 - 전체 메모 JSON 백업 내보내기·가져오기
@@ -76,7 +76,7 @@ APK 위치: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`. 디버그
 
 Apple silicon Mac에서 [iOS 실행 안내](iosApp/README.md)를 따라 `iosApp/Stillnote.xcodeproj`의 `Stillnote` 스킴을 실행합니다. Xcode가 공통 Kotlin 프레임워크를 먼저 빌드하도록 연결돼 있습니다. JDK 17이 필요하며 Xcode 빌드 환경에서 `JAVA_HOME`을 찾을 수 있어야 합니다.
 
-`com.stillnote.app`은 초기 앱 식별자입니다. 실제 기기 서명과 스토어 등록 전에 본인의 개발 팀과 사용할 Bundle Identifier를 설정해야 합니다.
+Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다. 실제 기기 서명과 스토어 등록 전에 본인의 개발 팀을 설정해야 합니다. 이전 `com.stillnote.app`과는 다른 앱으로 설치되므로 이전 메모를 옮기려면 JSON 백업 내보내기·가져오기를 사용합니다.
 
 ## 현재 확인 범위
 

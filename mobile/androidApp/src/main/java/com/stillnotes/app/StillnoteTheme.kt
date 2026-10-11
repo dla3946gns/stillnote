@@ -1,4 +1,4 @@
-package com.stillnote.app
+package com.stillnotes.app
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

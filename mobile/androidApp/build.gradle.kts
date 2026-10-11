@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.stillnote.app"
+    namespace = "com.stillnotes.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.stillnote.app"
+        applicationId = "com.stillnotes.app"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

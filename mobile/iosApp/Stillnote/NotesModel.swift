@@ -59,13 +59,18 @@ final class NotesModel {
     var activeID: String? { state.activeNote?.id }
     var visibleNotes: [Note] { state.visibleNotes }
 
-    func note(id: String) -> Note? { state.notes.first { $0.id == id } }
+    func note(id: String) -> Note? {
+        if let note = state.activeNote, note.id == id { return note }
+        return state.notes.first { $0.id == id }
+    }
 
     func select(_ id: String?) {
         if let id { store.selectNote(id: id) } else { store.closeNote() }
     }
 
     func create() { _ = store.createNote() }
+    func save() -> Bool { store.saveNote() }
+    func cancel() { store.cancelEdit() }
     func setQuery(_ query: String) { store.setQuery(query: query) }
     func setPinnedOnly(_ enabled: Bool) { store.setPinnedOnly(enabled: enabled) }
     func togglePin(id: String) { store.togglePinned(id: id) }

@@ -1,4 +1,4 @@
-package com.stillnote.app
+package com.stillnotes.app
 
 import android.content.ClipData
 import android.content.ClipboardManager

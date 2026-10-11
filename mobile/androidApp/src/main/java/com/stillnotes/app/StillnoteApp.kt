@@ -1,4 +1,4 @@
-package com.stillnote.app
+package com.stillnotes.app
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -43,6 +43,23 @@ fun StillnoteApp(
     val state = model.state
     val store = model.store
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun requestAction(action: () -> Unit) {
+        if (model.state.hasUnsavedChanges) pendingAction = action else {
+            if (model.state.saveFailed) store.cancelEdit()
+            action()
+        }
+    }
+    fun finishPendingAction(save: Boolean) {
+        if (save) {
+            if (!store.saveNote()) return
+        } else {
+            store.cancelEdit()
+        }
+        val action = pendingAction
+        pendingAction = null
+        action?.invoke()
+    }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -59,7 +76,7 @@ fun StillnoteApp(
                     },
                     action = {
                         if (model.platformMessage == null && state.canUndoDelete) {
-                            TextButton(onClick = { store.undoDelete() }, enabled = !state.saveFailed) {
+                            TextButton(onClick = { requestAction { store.undoDelete() } }, enabled = !state.saveFailed) {
                                 Text("삭제 취소", color = MaterialTheme.colorScheme.inversePrimary)
                             }
                         } else {
@@ -85,7 +102,9 @@ fun StillnoteApp(
             }
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                 val wide = maxWidth >= 840.dp
-                BackHandler(enabled = !wide && state.activeNote != null) { store.closeNote() }
+                BackHandler(enabled = state.hasUnsavedChanges || (!wide && state.activeNote != null)) {
+                    requestAction { store.closeNote() }
+                }
                 Row(Modifier.fillMaxSize()) {
                     if (wide || state.activeNote == null) {
                         NotesList(
@@ -93,10 +112,12 @@ fun StillnoteApp(
                             modifier = if (wide) Modifier.width(320.dp) else Modifier.weight(1f),
                             onQuery = { store.setQuery(it) },
                             onPinnedOnly = { store.setPinnedOnly(it) },
-                            onSelect = { store.selectNote(it) },
-                            onCreate = { store.createNote() },
+                            onSelect = { id ->
+                                if (id != state.activeNote?.id) requestAction { store.selectNote(id) }
+                            },
+                            onCreate = { requestAction { store.createNote() } },
                             onExportBackup = onExportBackup,
-                            onImportBackup = onImportBackup
+                            onImportBackup = { requestAction(onImportBackup) }
                         )
                     }
                     if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -111,11 +132,13 @@ fun StillnoteApp(
                                         note = note,
                                         state = state,
                                         showBack = !wide,
-                                        onBack = { store.closeNote() },
+                                        onBack = { requestAction { store.closeNote() } },
                                         onEdit = { title, body -> store.updateNote(note.id, title, body) },
-                                        onPin = { store.togglePinned(note.id) },
-                                        onDuplicate = { store.duplicateNote(note.id) },
-                                        onDelete = { deleteId = note.id },
+                                        onSave = { store.saveNote() },
+                                        onCancel = { store.cancelEdit() },
+                                        onPin = { requestAction { store.togglePinned(note.id) } },
+                                        onDuplicate = { requestAction { store.duplicateNote(note.id) } },
+                                        onDelete = { requestAction { deleteId = note.id } },
                                         onCopy = { onCopy(note.id) },
                                         onShare = { onShare(note.id) },
                                         onExportText = { onExportText(note.id) }
@@ -127,6 +150,27 @@ fun StillnoteApp(
                 }
             }
         }
+    }
+    if (pendingAction != null) {
+        AlertDialog(
+            onDismissRequest = { pendingAction = null },
+            title = { Text("변경 내용을 저장할까요?") },
+            text = {
+                Text(if (state.saveFailed) "저장하지 못했어요. 다시 저장하거나 계속 편집해 주세요."
+                    else "편집한 내용이 아직 저장되지 않았어요.")
+            },
+            confirmButton = {
+                TextButton(onClick = { finishPendingAction(save = true) }, enabled = !state.loadFailed) {
+                    Text("저장")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { finishPendingAction(save = false) }) { Text("버리기") }
+                    TextButton(onClick = { pendingAction = null }) { Text("계속 편집") }
+                }
+            }
+        )
     }
     if (deleteId != null) {
         AlertDialog(
@@ -149,8 +193,9 @@ fun StillnoteApp(
             text = { Text("선택한 백업에서 메모를 가져올까요? 기존 메모는 유지합니다.") },
             confirmButton = {
                 TextButton(onClick = {
-                    model.pendingImport?.let { store.importBackup(it) }
+                    val content = model.pendingImport
                     model.pendingImport = null
+                    if (content != null) requestAction { store.importBackup(content) }
                 }, enabled = !state.saveFailed && !state.loadFailed) { Text("가져오기") }
             },
             dismissButton = { TextButton(onClick = { model.pendingImport = null }) { Text("취소") } }
@@ -269,6 +314,8 @@ private fun NoteEditor(
     showBack: Boolean,
     onBack: () -> Unit,
     onEdit: (String, String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
     onPin: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
@@ -279,17 +326,22 @@ private fun NoteEditor(
     var title by rememberSaveable(note.id, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(note.title)) }
     var body by rememberSaveable(note.id, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(note.body)) }
     var menuOpen by remember(note.id) { mutableStateOf(false) }
+    LaunchedEffect(note.title, note.body) {
+        if (title.text != note.title) title = TextFieldValue(note.title)
+        if (body.text != note.body) body = TextFieldValue(note.body)
+    }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             if (showBack) TextButton(onClick = onBack) { Text("목록") }
-            Text(if (state.saveFailed) "미저장" else "기기에 저장됨", Modifier.weight(1f).padding(horizontal = 12.dp),
+            val unsaved = state.hasUnsavedChanges || state.saveFailed
+            Text(if (unsaved) "미저장" else "기기에 저장됨", Modifier.weight(1f).padding(horizontal = 12.dp),
                 style = MaterialTheme.typography.labelMedium,
-                color = if (state.saveFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                color = if (unsaved) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             Box {
                 TextButton(onClick = { menuOpen = true }) { Text("메모 메뉴") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    val canChange = !state.saveFailed && !state.loadFailed
+                    val canChange = !state.isNewNote && !state.loadFailed && !state.saveFailed
                     fun closeAnd(action: () -> Unit) { menuOpen = false; action() }
                     DropdownMenuItem(text = { Text(if (note.pinned) "고정 해제" else "메모 고정") },
                         onClick = { closeAnd(onPin) }, enabled = canChange)
@@ -302,6 +354,13 @@ private fun NoteEditor(
                         onClick = { closeAnd(onDelete) }, enabled = canChange)
                 }
             }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onCancel, enabled = state.hasUnsavedChanges || state.saveFailed) { Text("취소") }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onSave, enabled = (state.hasUnsavedChanges || state.saveFailed) && !state.loadFailed) { Text("저장") }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 24.dp, vertical = 20.dp)) {
