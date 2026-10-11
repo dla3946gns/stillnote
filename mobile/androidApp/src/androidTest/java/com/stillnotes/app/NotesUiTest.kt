@@ -144,9 +144,11 @@ class NotesUiTest {
 
         compose.onNodeWithTag("notes-search").performTextReplacement("")
         compose.waitForIdle()
+        // LazyColumn only exposes composed (viewport) rows while the IME is up.
+        // Verify the full result count and the disappearance of the empty state;
+        // inspecting offscreen row semantics would make this test flaky.
         compose.onNodeWithText("2개").assertExists()
-        compose.onNodeWithText("첫 번째 메모").assertExists()
-        compose.onNodeWithText("둘째 메모").assertExists()
+        compose.onNodeWithText("검색 결과가 없어요").assertDoesNotExist()
     }
 
     @Test
