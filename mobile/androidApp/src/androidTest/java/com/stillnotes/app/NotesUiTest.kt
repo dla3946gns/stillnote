@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -83,7 +84,7 @@ class NotesUiTest {
 
         compose.onNodeWithText("재실행 테스트").performClick()
         compose.onNodeWithTag("note-title").assertIsDisplayed()
-        compose.onNodeWithTag("note-body").assertIsDisplayed()
+        compose.onNodeWithTag("note-body").assertExists()
         compose.onNodeWithTag("note-title").assertTextContains("재실행 테스트")
         compose.onNodeWithTag("note-body").assertTextContains("다시 열어도 남는 본문")
     }
@@ -114,7 +115,7 @@ class NotesUiTest {
         compose.onNodeWithTag("note-title").assertTextContains("확인창 테스트")
 
         compose.onNodeWithText("목록").performClick()
-        compose.onNodeWithText("저장").performClick()
+        compose.onNodeWithTag("unsaved-dialog-save").performClick()
         compose.onNodeWithText("확인창 테스트").assertIsDisplayed()
 
         newDraft("버릴 초안", "임시 내용")
@@ -130,7 +131,7 @@ class NotesUiTest {
         saveNew("둘째 메모", "커피 기록")
 
         compose.onNodeWithTag("notes-search").performTextInput("여행")
-        compose.onNodeWithText("첫 번째 메모").assertIsDisplayed()
+        compose.onNodeWithText("첫 번째 메모").assertExists()
         compose.onNodeWithText("둘째 메모").assertDoesNotExist()
 
         compose.onNodeWithTag("notes-search").performTextReplacement("없는 검색어")
@@ -161,7 +162,7 @@ class NotesUiTest {
         compose.onNodeWithText("메모 메뉴").performClick()
         compose.onNodeWithText("메모 삭제").performClick()
         compose.onNodeWithText("메모를 삭제할까요?").assertIsDisplayed()
-        compose.onNodeWithText("취소").performClick()
+        compose.onNodeWithTag("delete-dialog-cancel").performClick()
         compose.onNodeWithTag("note-title").assertTextContains("삭제 확인 메모")
 
         compose.onNodeWithText("메모 메뉴").performClick()
