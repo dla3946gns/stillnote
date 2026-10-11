@@ -363,12 +363,18 @@ private struct NoteEditor: View {
             .foregroundStyle(Theme.muted)
 
             HStack(spacing: 12) {
-                Button("취소", action: model.cancel)
+                Button("취소") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    model.cancel()
+                    model.select(nil)
+                }
                     .buttonStyle(.bordered)
-                Button("저장") { _ = model.save() }
+                Button("저장") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    if model.save() { model.select(nil) }
+                }
                     .buttonStyle(.borderedProminent)
             }
-            .disabled(!model.state.hasUnsavedChanges && !model.state.saveFailed)
 
             LimitedTitleField(text: Binding(
                 get: { model.note(id: noteID)?.title ?? "" },

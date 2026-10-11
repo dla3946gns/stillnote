@@ -134,8 +134,8 @@ fun StillnoteApp(
                                         showBack = !wide,
                                         onBack = { requestAction { store.closeNote() } },
                                         onEdit = { title, body -> store.updateNote(note.id, title, body) },
-                                        onSave = { store.saveNote() },
-                                        onCancel = { store.cancelEdit() },
+                                        onSave = { if (store.saveNote()) store.closeNote() },
+                                        onCancel = { store.cancelEdit(); store.closeNote() },
                                         onPin = { requestAction { store.togglePinned(note.id) } },
                                         onDuplicate = { requestAction { store.duplicateNote(note.id) } },
                                         onDelete = { requestAction { deleteId = note.id } },
@@ -358,9 +358,9 @@ private fun NoteEditor(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onCancel, enabled = state.hasUnsavedChanges || state.saveFailed) { Text("취소") }
+            TextButton(onClick = onCancel) { Text("취소") }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onSave, enabled = (state.hasUnsavedChanges || state.saveFailed) && !state.loadFailed) { Text("저장") }
+            Button(onClick = onSave, enabled = !state.loadFailed) { Text("저장") }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 24.dp, vertical = 20.dp)) {
