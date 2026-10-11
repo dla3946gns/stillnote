@@ -1,0 +1,35 @@
+name: Mobile PR validation
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+  push:
+    branches:
+      - codex/kmp-native-apps-20261011
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android build and shared checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+      - name: Gradle build and checks
+        run: bash ./gradlew :shared:compileKotlinMetadata :androidApp:assembleDebug --stacktrace
