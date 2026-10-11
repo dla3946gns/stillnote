@@ -1,8 +1,10 @@
 package com.stillnotes.app
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.res.Configuration
 import android.view.WindowInsets
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -77,6 +79,28 @@ class NotesUiTest {
         }
     }
 
+
+    /**
+     * Google Play uses REAL emulator captures with synthetic notes, not mocked
+     * marketing UI. MediaStore keeps these captures across Gradle's teardown
+     * of the instrumented APK and across the light/dark test phases.
+     */
+    private fun captureStoreListing(name: String) {
+        val night = (targetContext().resources.configuration.uiMode
+            and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val filename = name + (if (night) "-dark.png" else "-light.png")
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/StillnoteQA")
+        }
+        val resolver = targetContext().contentResolver
+        val uri = checkNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        checkNotNull(resolver.openOutputStream(uri)).use { stream ->
+            assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
+        }
+    }
 
     private fun newDraft(title: String, body: String) {
         compose.onNodeWithText("새 메모").performClick()
@@ -253,6 +277,22 @@ class NotesUiTest {
         compose.onNodeWithTag("privacy-policy-close").performClick()
         compose.onNodeWithTag("privacy-policy-body").assertDoesNotExist()
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
+    }
+
+    @Test
+    fun storeListingScreenshotsUseOnlySyntheticSampleNotes() {
+        saveNew("오늘의 생각", "작은 생각도 포실포실 자라나요.")
+        saveNew("이번 주 할 일", "책 읽기, 산책하기, 좋아하는 음악 듣기")
+        // Screenshots must show a clean, stable real screen, not the temporary
+        // "메모를 저장했어요" snackbar from the save that populated demo notes.
+        compose.onNodeWithText("닫기").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("2개").assertIsDisplayed()
+        captureStoreListing("store-list")
+        compose.onNodeWithText("오늘의 생각").performClick()
+        compose.onNodeWithTag("note-title").assertTextContains("오늘의 생각")
+        compose.onNodeWithTag("note-body").assertTextContains("작은 생각도 포실포실 자라나요.")
+        captureStoreListing("store-editor")
     }
 
     @Test

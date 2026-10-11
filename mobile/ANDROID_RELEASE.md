@@ -103,6 +103,18 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 
 운영 주체는 **Anna Johnny Works**, 사용자 문의 이메일은 **dla3946gns@gmail.com**으로 확인되어 앱과 정책 페이지에 반영했습니다. Android 앱의 `더보기 → 개인정보처리방침`에서 **인터넷 없이 전체 정책을 확인**할 수 있도록 구현했습니다. CI는 앱 내부 정책과 웹페이지 정책의 내용 일치를 자동 검사합니다. 다만 정책 웹페이지의 **실제 HTTPS 공개 URL은 아직 GitHub Pages 설정 및 접근 확인이 필요**합니다. Google Play Data safety 설문, 운영 주체 사업자 관련 필수 정보 및 최종 공개 정책의 법적 검토도 별도로 필요합니다.
 
+## Google Play 등록정보·데이터 보안·이미지
+
+- [한국어 스토어 입력값 JSON](play/listing-ko.json) — 글자 수/운영자 정보 자동 검증
+- [Google Play 디자인·아이콘·실제 앱 스크린샷 생성 방법](PLAY_ASSETS.md)
+- [Data safety 데이터 수집·공유·삭제 검토표](PLAY_DATA_SAFETY_REVIEW.md)
+
+앱 런처 아이콘과 스토어 이미지는 **포실이(새싹 감자)**를 이용한 통일된 따뜻한 파스텔 디자인입니다. 메모 UI를 광고 이미지에 합성하지 않고 Android 에뮬레이터의 실제 UI에서 예시 데이터만 캡처합니다. 성공한 GitHub Actions에서는 `stillnote-play-listing-assets` 아티팩트로 이미지를 받습니다.
+
+공개 웹사이트: https://dla3946gns.github.io/stillnote/
+공개 개인정보처리방침: https://dla3946gns.github.io/stillnote/privacy/
+웹 URL의 HTTPS·본문은 [Pages 실행](https://github.com/dla3946gns/stillnote/actions/runs/38173211408)에서 확인했습니다. Play Console 등록과 최종 Data safety 응답은 운영자 확인이 필요합니다.
+
 ## 4. Google Play 내부 테스트 전 체크
 
 - [ ] `PLAY_STORE_LISTING_DRAFT.md`에서 설명을 검토하고 실제 스토어 등록정보로 확정
@@ -112,7 +124,7 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 - [x] GitHub Pages 자동 배포 워크플로 준비 및 정책 본문 일치 검증
 - [ ] 소유자가 Settings → Pages → Source에서 **GitHub Actions**를 선택한 후 워크플로 수동 실행
 - [ ] 예정 정책 URL 공개 접근 및 HTTPS 확인
-- [ ] 앱 이름·아이콘·스크린샷·스토어 등록정보 최종 확인
+- [ ] 포실이 앱 아이콘·대표 이미지·실제 화면 스크린샷 최종 검수 및 Play Console 등록정보 승인
 - [ ] 개인정보처리방침 및 Play Console 데이터 보안(Data safety) 신고 항목 확인
 - [ ] 콘텐츠 등급, 타깃 고객층, 개인정보 및 필수 정책 질문 완료
 - [ ] 이전에 배포된 버전보다 높은 `versionCode`, 동일한 `applicationId` 확인

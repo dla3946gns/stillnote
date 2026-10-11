@@ -1,0 +1,13 @@
+{
+  "language": "ko-KR",
+  "appName": "Stillnote",
+  "shortDescription": "작은 생각을 가볍게 기록하고 검색·고정·JSON 백업으로 정리하세요.",
+  "fullDescription": "Stillnote는 떠오르는 생각을 부담 없이 기록하고 정리하는 메모 앱입니다.\n\n메모를 작성하고 찾는 일이 간단해집니다.\n\n• 제목과 본문을 작성하고 기기에 저장\n• 제목·본문 검색과 중요한 메모 고정\n• 메모 복제, 삭제 전 확인 및 삭제 실행 취소\n• 텍스트 복사와 Android 공유 기능\n• 개별 메모 텍스트 파일 저장\n• 전체 메모 JSON 백업 내보내기 및 가져오기\n• 기기 설정에 맞춘 라이트·다크 테마\n\n메모는 기기 내부 저장소에 보관되며, 계정이나 로그인이 필요하지 않습니다. 자동 클라우드 동기화나 기기 간 동기화는 지원하지 않습니다.\n\n기기 변경이나 앱 삭제 전에는 중요한 메모를 JSON 백업으로 저장해 주세요. 별도 저장한 파일은 사용자가 직접 관리합니다.",
+  "developerName": "Anna Johnny Works",
+  "contactEmail": "dla3946gns@gmail.com",
+  "website": "https://dla3946gns.github.io/stillnote/",
+  "privacyPolicy": "https://dla3946gns.github.io/stillnote/privacy/",
+  "categoryProposal": "PRODUCTIVITY",
+  "appId": "com.stillnotes.app",
+  "reviewStatus": "draft-owner-and-policy-review-required"
+}
