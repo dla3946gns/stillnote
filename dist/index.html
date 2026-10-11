@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5efe3">
   <meta name="description" content="생각나는 순간, 간단히 적어두는 메모 앱입니다.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%237a5746'/%3E%3Cpath d='M15 14h18M15 21h18M15 28h12M15 35h18' stroke='%23fffcf6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-  <title>메모 — 가볍게 적어두세요</title>
+  <title>stillnotes.web — 가볍게 적어두세요</title>
   <style>
     :root {
       color-scheme: light;
@@ -87,6 +87,15 @@
     .icon-button.is-pinned, .icon-button.is-pinned:hover { border-color: #dcc6b1; background: var(--green-soft); color: var(--green); }
     .icon-button svg { width: 16px; height: 16px; }
     .editor-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+    .icon-button:disabled { opacity: .4; cursor: not-allowed; }
+    .editor-controls, .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .editor-button { padding: 8px 15px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); cursor: pointer; font-size: 12px; }
+    .editor-button.is-save { border-color: var(--green); background: var(--green); color: var(--paper); }
+    .editor-button:disabled { opacity: .4; cursor: not-allowed; }
+    .unsaved-dialog { width: min(420px, calc(100% - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); color: var(--ink); }
+    .unsaved-dialog::backdrop { background: rgba(53, 43, 37, .35); }
+    .unsaved-dialog h2 { margin: 0 0 12px; font-size: 18px; }
+    .unsaved-dialog p { color: var(--muted); font-size: 13px; line-height: 1.7; }
     .pin-indicator { display: inline-block; width: 12px; height: 12px; margin-right: 5px; color: var(--green); vertical-align: -1px; }
     .note-title { display: block; width: 100%; margin: 28px 0 13px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: clamp(27px, 3.4vw, 39px); font-weight: 680; letter-spacing: -.055em; line-height: 1.25; }
     .note-title::placeholder { color: #c6b8a6; }
@@ -136,7 +145,7 @@
       <div class="sidebar-ambience" aria-hidden="true"><canvas id="sidebarShader" style="width:100%;height:100%"></canvas></div>
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6.5h12M6 11.5h12M6 16.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
-        <div><div class="brand-name">메모</div><div class="brand-caption">가볍게 적어두세요</div></div>
+        <div><div class="brand-name">stillnotes.web</div><div class="brand-caption">가볍게 적어두세요</div></div>
       </div>
       <div class="sidebar-heading"><h1>내 메모</h1><button class="note-filter" type="button" id="pinnedFilterButton" aria-label="고정 메모만 보기" aria-pressed="false">고정만 보기</button><span class="note-count" id="noteCount">0</span></div>
       <button class="new-note" type="button" id="newNoteButton" title="새 메모 (N)" aria-keyshortcuts="N">
@@ -167,12 +176,21 @@
       <div class="workspace-top">
         <button class="mobile-back" type="button" id="backButton"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 5-7 7 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>목록</button>
         <div class="workspace-label"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.75h7l4.25 4.3v12.2H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><path d="M14 4v4h4M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>메모장</div>
-        <div class="save-state" id="saveState" aria-live="polite" title="Ctrl+S / ⌘+S로 저장" aria-keyshortcuts="Control+S Meta+S"><span class="save-dot"></span><span>자동 저장</span></div>
+        <div class="save-state" id="saveState" aria-live="polite" title="Ctrl+S / ⌘+S로 저장" aria-keyshortcuts="Control+S Meta+S"><span class="save-dot"></span><span>저장 버튼으로 보관</span></div>
       </div>
       <div class="editor-wrap" id="editorWrap"></div>
     </section>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button class="toast-action" id="toastAction" type="button" hidden>실행 취소</button></div>
+  <dialog class="unsaved-dialog" id="unsavedDialog" aria-labelledby="unsavedTitle" aria-describedby="unsavedMessage">
+    <h2 id="unsavedTitle">저장하지 않은 내용이 있어요</h2>
+    <p id="unsavedMessage" aria-live="polite">내용을 저장하거나 버린 후 이동할 수 있어요.</p>
+    <div class="dialog-actions">
+      <button class="editor-button" type="button" id="keepEditingButton" autofocus>계속 편집</button>
+      <button class="editor-button" type="button" id="discardChangesButton">버리기</button>
+      <button class="editor-button is-save" type="button" id="saveChangesButton">저장</button>
+    </div>
+  </dialog>
   <script>
     (() => {
       const STORAGE_KEY = 'simple-notes-v1';
@@ -190,8 +208,13 @@
       const toast = document.getElementById('toast');
       const toastMessage = document.getElementById('toastMessage');
       const toastAction = document.getElementById('toastAction');
+      const unsavedDialog = document.getElementById('unsavedDialog');
+      const unsavedMessage = document.getElementById('unsavedMessage');
       let notes = [];
       let activeId = null;
+      let draft = null;
+      let pendingAction = null;
+      let editSaveFailure = null;
       let searchQuery = '';
       let pinnedOnly = false;
       let saveFailed = false;
@@ -205,7 +228,9 @@
       }
 
       const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-      const activeNote = () => notes.find(note => note.id === activeId);
+      const savedNote = () => notes.find(note => note.id === activeId);
+      const activeNote = () => draft;
+      const hasUnsavedChanges = () => Boolean(draft && (!savedNote() || draft.title !== savedNote().title || draft.body !== savedNote().body));
       const dateLabel = value => {
         const date = new Date(value || Date.now());
         if (Number.isNaN(date.getTime())) return '방금 전';
@@ -223,16 +248,22 @@
         if (start && /[\uDC00-\uDFFF]/.test(body[start])) start--;
         return `${start ? '… ' : ''}${body.slice(start).replace(/\s+/g, ' ') || '내용 없음'}`;
       };
-      const renderSaveState = (label = '저장됨') => {
+      const renderSaveState = () => {
         saveError.hidden = !saveFailed;
+        const label = hasUnsavedChanges() ? '미저장' : draft ? '저장됨' : '저장 버튼으로 보관';
         saveState.innerHTML = saveFailed
           ? '<span style="color:#c6765d">저장하지 못했어요</span>'
           : `<span class="save-dot"></span><span>${label}</span>`;
+        const saveButton = document.getElementById('saveNoteButton');
+        const cancelButton = document.getElementById('cancelEditButton');
+        if (saveButton) saveButton.disabled = !hasUnsavedChanges() && !saveFailed;
+        if (cancelButton) cancelButton.disabled = !hasUnsavedChanges() && editSaveFailure === null;
       };
-      const persist = () => {
+      const persist = (candidate = notes) => {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(candidate));
           saveFailed = false;
+          editSaveFailure = null;
           renderSaveState();
           return true;
         } catch (_) {
@@ -262,14 +293,14 @@
       };
       const renderEditor = () => {
         const note = activeNote();
-        document.title = note ? `${noteTitle(note)} — 메모` : '메모 — 가볍게 적어두세요';
+        document.title = note ? `${noteTitle(note)} — stillnotes.web` : 'stillnotes.web — 가볍게 적어두세요';
         if (!note) {
           editorWrap.innerHTML = `<div class="empty-editor">
             <div class="empty-illustration" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M10 7h13a2 2 0 0 1 2 2v16H10a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.5"/><path d="M12 12h9M12 16h9M12 20h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
             <h2>생각을 적어두세요</h2><p>간단한 아이디어부터 잊기 쉬운 일까지,<br>필요한 만큼만 가볍게 기록해요.</p>
             <button class="new-note" type="button" data-action="new" title="새 메모 (N)" aria-keyshortcuts="N"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>새 메모 쓰기</button>
           </div>`;
-          renderSaveState('자동 저장');
+          renderSaveState();
           return;
         }
         editorWrap.innerHTML = `<div class="editor">
@@ -282,34 +313,45 @@
               <button class="icon-button" type="button" data-action="delete" aria-label="메모 삭제" title="메모 삭제"><svg viewBox="0 0 24 24" fill="none"><path d="M4.5 7h15M9.5 7V4.8h5V7M7.5 7l.7 12h7.6l.7-12M10 10.5v5M14 10.5v5" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
           </div>
+          <div class="editor-controls"><button class="editor-button" type="button" id="cancelEditButton" data-action="cancel">취소</button><button class="editor-button is-save" type="button" id="saveNoteButton" data-action="save" title="저장 (Ctrl+S / ⌘+S)" aria-keyshortcuts="Control+S Meta+S">저장</button></div>
           <input class="note-title" id="noteTitle" type="text" maxlength="120" placeholder="제목 없음" aria-label="메모 제목" aria-describedby="titleCount" value="${escapeHtml(note.title)}" autocomplete="off">
           <div class="title-count" id="titleCount">${note.title.length} / 120자</div>
           <textarea class="note-body" id="noteBody" placeholder="여기에 메모를 적어보세요..." aria-label="메모 내용">${escapeHtml(note.body)}</textarea>
-          <div class="editor-bottom"><span class="word-count" id="wordCount">${note.body.length}자</span><span class="local-hint"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-3.5 7-9V5l-7-2-7 2v7c0 5.5 7 9 7 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>자동 저장 · 이 브라우저에만 보관</span></div>
+          <div class="editor-bottom"><span class="word-count" id="wordCount">${note.body.length}자</span><span class="local-hint"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-3.5 7-9V5l-7-2-7 2v7c0 5.5 7 9 7 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>저장을 누르면 이 브라우저에만 보관</span></div>
         </div>`;
+        editorWrap.querySelectorAll('[data-action="pin"], [data-action="duplicate"], [data-action="delete"]').forEach(button => { button.disabled = !savedNote(); });
         renderSaveState();
       };
       const openNote = (id, focusTitle = false) => {
-        activeId = id;
-        app.classList.add('is-editor');
-        renderList();
-        renderEditor();
-        if (focusTitle) requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
+        if (id === activeId && draft) {
+          app.classList.add('is-editor');
+          if (focusTitle) document.getElementById('noteTitle')?.focus();
+          return;
+        }
+        withUnsavedGuard(() => {
+          const note = notes.find(item => item.id === id);
+          if (!note) return;
+          activeId = id;
+          draft = { ...note };
+          app.classList.add('is-editor');
+          renderList();
+          renderEditor();
+          if (focusTitle) requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
+        });
       };
-      const createNote = () => {
+      const createNote = () => withUnsavedGuard(() => {
         searchInput.value = '';
         searchQuery = '';
         pinnedOnly = false;
         const now = Date.now();
         const note = { id: (crypto.randomUUID ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`), title: '', body: '', createdAt: now, updatedAt: now, pinned: false };
-        notes.push(note);
         activeId = note.id;
-        persist();
+        draft = note;
         renderList();
         renderEditor();
         app.classList.add('is-editor');
         requestAnimationFrame(() => document.getElementById('noteTitle')?.focus());
-      };
+      });
       const showToast = (message, action = null) => {
         toastMessage.textContent = message;
         toastAction.hidden = !action;
@@ -379,10 +421,11 @@
         }
       };
       const togglePinned = () => {
-        const note = activeNote();
+        const note = savedNote();
         if (!note) return;
         note.pinned = !note.pinned;
         persist();
+        draft = { ...note };
         renderList();
         renderEditor();
         showToast(note.pinned ? '메모를 고정했어요.' : '고정을 해제했어요.');
@@ -437,14 +480,17 @@
         };
         notes.push(duplicate);
         const previousActiveId = activeId;
+        const previousDraft = draft;
         activeId = duplicate.id;
         if (!persist()) {
           notes = notes.filter(item => item.id !== duplicate.id);
           activeId = previousActiveId;
+          draft = previousDraft;
           renderList();
           renderEditor();
           return;
         }
+        draft = { ...duplicate };
         if (pinnedOnly) {
           pinnedOnly = false;
           searchInput.value = '';
@@ -457,34 +503,38 @@
         showToast('메모를 복제했어요.');
       };
       const deleteActive = () => {
-        const note = activeNote();
+        const note = savedNote();
         if (!note || !window.confirm('이 메모를 삭제할까요?')) return;
         const deletedIndex = notes.indexOf(note);
         notes = notes.filter(item => item.id !== activeId);
         activeId = [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id || null;
+        draft = savedNote() ? { ...savedNote() } : null;
         persist();
         renderList();
         renderEditor();
         if (!activeId) app.classList.remove('is-editor');
-        showToast('메모를 삭제했어요.', () => {
+        showToast('메모를 삭제했어요.', () => withUnsavedGuard(() => {
           const previousActiveId = activeId;
+          const previousDraft = draft;
           const restoreIndex = Math.min(deletedIndex, notes.length);
           notes.splice(restoreIndex, 0, note);
           activeId = note.id;
           if (!persist()) {
             notes.splice(restoreIndex, 1);
             activeId = previousActiveId;
+            draft = previousDraft;
             renderList();
             renderEditor();
             return;
           }
+          draft = { ...note };
           renderList();
           renderEditor();
           app.classList.add('is-editor');
           showToast('메모를 복원했어요.');
-        });
+        }));
       };
-      const saveEditor = () => {
+      const updateEditor = () => {
         const note = activeNote();
         if (!note) return;
         const titleField = document.getElementById('noteTitle');
@@ -492,28 +542,96 @@
         if (!titleField || !bodyField) return;
         note.title = titleField.value;
         note.body = bodyField.value;
-        note.updatedAt = Date.now();
-        document.title = `${noteTitle(note)} — 메모`;
+        document.title = `${noteTitle(note)} — stillnotes.web`;
         const titleCount = document.getElementById('titleCount');
         if (titleCount) titleCount.textContent = `${note.title.length} / 120자`;
         const wordCount = document.getElementById('wordCount');
         if (wordCount) wordCount.textContent = `${note.body.length}자`;
-        const updatedLabel = document.getElementById('updatedLabel');
-        if (updatedLabel) updatedLabel.textContent = dateLabel(note.updatedAt);
-        persist();
-        renderList();
+        renderSaveState();
       };
+      const saveEditor = () => {
+        if (!hasUnsavedChanges()) return persist();
+        const saved = { ...draft, updatedAt: Date.now() };
+        const candidate = savedNote() ? notes.map(note => note.id === activeId ? saved : note) : [...notes, saved];
+        const previousFailure = saveFailed;
+        if (!persist(candidate)) {
+          if (editSaveFailure === null) editSaveFailure = previousFailure;
+          return false;
+        }
+        notes = candidate;
+        draft = { ...saved };
+        editSaveFailure = null;
+        renderList();
+        renderEditor();
+        return true;
+      };
+      const cancelEdit = () => {
+        draft = savedNote() ? { ...savedNote() } : null;
+        if (!draft) {
+          activeId = null;
+          app.classList.remove('is-editor');
+        }
+        if (editSaveFailure !== null) {
+          saveFailed = editSaveFailure;
+          editSaveFailure = null;
+        }
+        renderList();
+        renderEditor();
+      };
+      const withUnsavedGuard = action => {
+        if (!hasUnsavedChanges()) {
+          if (editSaveFailure !== null) cancelEdit();
+          action();
+          return;
+        }
+        pendingAction = action;
+        unsavedMessage.textContent = '내용을 저장하거나 버린 후 이동할 수 있어요.';
+        unsavedDialog.showModal();
+      };
+      const finishPendingAction = () => {
+        const action = pendingAction;
+        pendingAction = null;
+        unsavedDialog.close();
+        action?.();
+      };
+      const closeEditor = () => withUnsavedGuard(() => {
+        activeId = null;
+        draft = null;
+        app.classList.remove('is-editor');
+        renderList();
+        renderEditor();
+        searchInput.focus();
+      });
+
+      document.getElementById('keepEditingButton').addEventListener('click', () => {
+        pendingAction = null;
+        unsavedDialog.close();
+      });
+      unsavedDialog.addEventListener('cancel', () => { pendingAction = null; });
+      document.getElementById('discardChangesButton').addEventListener('click', () => {
+        cancelEdit();
+        finishPendingAction();
+      });
+      document.getElementById('saveChangesButton').addEventListener('click', () => {
+        if (saveEditor()) finishPendingAction();
+        else unsavedMessage.textContent = '저장하지 못했어요. 다시 저장하거나 계속 편집할 수 있어요.';
+      });
+      window.addEventListener('beforeunload', event => {
+        if (!hasUnsavedChanges()) return;
+        event.preventDefault();
+        event.returnValue = '';
+      });
 
       document.getElementById('newNoteButton').addEventListener('click', createNote);
       document.getElementById('retrySaveButton').addEventListener('click', () => {
-        if (!persist()) return;
+        if (!saveEditor()) return;
         showToast('변경 내용을 저장했어요.');
         const bodyField = document.getElementById('noteBody');
         if (bodyField?.getClientRects().length) bodyField.focus();
         else searchInput.focus();
       });
       exportButton.addEventListener('click', exportNotes);
-      importButton.addEventListener('click', () => importInput.click());
+      importButton.addEventListener('click', () => withUnsavedGuard(() => importInput.click()));
       importInput.addEventListener('change', importNotes);
       pinnedFilterButton.addEventListener('click', () => {
         pinnedOnly = !pinnedOnly;
@@ -539,16 +657,23 @@
         event.preventDefault();
         openNote(firstResult.dataset.id, true);
       });
-      document.getElementById('backButton').addEventListener('click', () => app.classList.remove('is-editor'));
+      document.getElementById('backButton').addEventListener('click', closeEditor);
       document.addEventListener('keydown', event => {
         if (event.isComposing) return;
+        if (unsavedDialog.open) {
+          if (event.key.toLocaleLowerCase() === 's' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            document.getElementById('saveChangesButton').click();
+          }
+          return;
+        }
         if (event.key.toLocaleLowerCase() === 's' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.keyCode !== 229) {
           event.preventDefault();
           if (event.repeat) return;
           const retryFocused = document.activeElement?.id === 'retrySaveButton';
           const undoFocused = document.activeElement === toastAction;
           const undoAction = toastAction.hidden ? null : toastAction.onclick;
-          const saved = persist();
+          const saved = saveEditor();
           if (undoAction) {
             showToast(saved ? '저장했어요. 삭제한 메모는 복원할 수 있어요.' : toastMessage.textContent, undoAction);
             if (undoFocused) toastAction.focus();
@@ -562,11 +687,7 @@
         }
         if (event.key === 'Escape' && app.classList.contains('is-editor')) {
           event.preventDefault();
-          activeId = null;
-          app.classList.remove('is-editor');
-          renderList();
-          renderEditor();
-          searchInput.focus();
+          closeEditor();
           return;
         }
         const isInputTarget = event.target?.matches?.('input, textarea, button, [contenteditable="true"]');
@@ -579,8 +700,7 @@
         if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
         if (isInputTarget) return;
         event.preventDefault();
-        app.classList.remove('is-editor');
-        searchInput.focus();
+        closeEditor();
       });
       list.addEventListener('keydown', event => {
         if (event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
@@ -619,7 +739,7 @@
         if (row) openNote(row.dataset.id, event.detail === 0);
       });
       editorWrap.addEventListener('input', event => {
-        if (event.target.id === 'noteTitle' || event.target.id === 'noteBody') saveEditor();
+        if (event.target.id === 'noteTitle' || event.target.id === 'noteBody') updateEditor();
       });
       editorWrap.addEventListener('keydown', event => {
         if (event.target?.id !== 'noteTitle' || event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
@@ -629,13 +749,19 @@
       editorWrap.addEventListener('click', event => {
         const action = event.target.closest('[data-action]')?.dataset.action;
         if (action === 'new') createNote();
-        if (action === 'pin') togglePinned();
+        if (action === 'save' && saveEditor()) showToast('메모를 저장했어요.');
+        if (action === 'cancel') {
+          cancelEdit();
+          showToast('편집을 취소했어요.');
+        }
+        if (action === 'pin') withUnsavedGuard(togglePinned);
         if (action === 'copy') copyActive();
         if (action === 'download') downloadActive();
-        if (action === 'duplicate') duplicateActive();
-        if (action === 'delete') deleteActive();
+        if (action === 'duplicate') withUnsavedGuard(duplicateActive);
+        if (action === 'delete') withUnsavedGuard(deleteActive);
       });
       if (notes.length) activeId = [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
+      if (savedNote()) draft = { ...savedNote() };
       renderList();
       renderEditor();
     })();
