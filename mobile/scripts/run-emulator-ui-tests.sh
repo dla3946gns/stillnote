@@ -4,14 +4,32 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# Some hosted AVD images enable a hardware keyboard and therefore suppress the
-# soft IME. The keyboard-overlap regression must run with a visible soft IME.
-if ! adb shell settings put secure show_ime_with_hard_keyboard 1; then
-    echo "::error::Cannot enable the software keyboard on the emulator"
+# Headless emulator images may leave the IME service disabled or have no
+# default selected. That causes InsetsController.show(ime()) to fail at
+# PHASE_CLIENT_REQUEST_IME_SHOW even though the Compose text field has focus.
+# Enable and explicitly select a real installed keyboard before both UI suites.
+available_imes="$(adb shell ime list -s | tr -d '\r')"
+echo "Installed emulator keyboard services:"
+printf '%s\n' "$available_imes"
+target_ime="$(printf '%s\n' "$available_imes" | grep -m1 '^com.google.android.inputmethod.latin/' || true)"
+if [[ -z "$target_ime" ]]; then
+    target_ime="$(printf '%s\n' "$available_imes" | grep -m1 '^com.android.inputmethod.latin/' || true)"
+fi
+if [[ -z "$target_ime" ]]; then
+    target_ime="$(printf '%s\n' "$available_imes" | grep -m1 '/' || true)"
+fi
+if [[ -z "$target_ime" ]]; then
+    echo "::error::The emulator has no installed input method service; keyboard QA is impossible"
     exit 1
 fi
-if [[ "$(adb shell settings get secure show_ime_with_hard_keyboard | tr -d '\r')" != "1" ]]; then
-    echo "::error::Emulator software-keyboard setting did not stick"
+adb shell ime enable "$target_ime" || exit 1
+adb shell ime set "$target_ime" || exit 1
+adb shell settings put secure show_ime_with_hard_keyboard 1 || exit 1
+current_ime="$(adb shell settings get secure default_input_method | tr -d '\r')"
+show_with_hardware="$(adb shell settings get secure show_ime_with_hard_keyboard | tr -d '\r')"
+echo "Selected IME: $current_ime; show with hardware keyboard: $show_with_hardware"
+if [[ "$current_ime" != "$target_ime" || "$show_with_hardware" != "1" ]]; then
+    echo "::error::Emulator IME selection or visible software-keyboard setting did not stick"
     exit 1
 fi
 
