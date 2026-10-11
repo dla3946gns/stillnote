@@ -12,6 +12,7 @@ kotlin {
         compileSdk = 37
         minSdk = 26
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+        withHostTest { }
     }
 
     listOf(iosArm64(), iosSimulatorArm64()).forEach {
@@ -24,6 +25,9 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
