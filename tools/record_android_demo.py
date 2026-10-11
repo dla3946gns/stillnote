@@ -254,6 +254,18 @@ class Demo:
             raise RuntimeError("Refusing to modify an emulator containing existing notes")
         self.adb("shell", "am", "start", "-W", "-n", ACTIVITY)
         time.sleep(5)
+        root, _ = self.ui()
+        if any(node.get("resource-id") == "android:id/alertTitle"
+               and node.get("text") == "Quickstep isn't responding" for node in root.iter("node")):
+            buttons = [node for node in root.iter("node")
+                       if node.get("resource-id") == "android:id/aerr_close"
+                       and node.get("text") == "Close app"]
+            if len(buttons) != 1 or self.bounds(buttons[0]) is None:
+                raise RuntimeError("Could not close the emulator launcher's observed ANR dialog")
+            left, top, right, bottom = self.bounds(buttons[0])
+            self.adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+            self.event("emulator_launcher_dialog_closed")
+            time.sleep(1)
         texts = self.texts()
         if "아직 메모가 없어요" not in texts or "0개" not in texts:
             raise RuntimeError("A fresh empty Stillnote app on a phone-sized emulator is required")
