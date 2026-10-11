@@ -283,6 +283,10 @@ class NotesUiTest {
     fun storeListingScreenshotsUseOnlySyntheticSampleNotes() {
         saveNew("오늘의 생각", "작은 생각도 포실포실 자라나요.")
         saveNew("이번 주 할 일", "책 읽기, 산책하기, 좋아하는 음악 듣기")
+        // Screenshots must show a clean, stable real screen, not the temporary
+        // "메모를 저장했어요" snackbar from the save that populated demo notes.
+        compose.onNodeWithText("닫기").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("2개").assertIsDisplayed()
         captureStoreListing("store-list")
         compose.onNodeWithText("오늘의 생각").performClick()
