@@ -11,15 +11,15 @@
 - 공개 개인정보 문의 이메일: **dla3946gns@gmail.com**
 - GitHub Actions는 앱 원문과 웹 문서의 내용이 같은지 `mobile/scripts/verify-privacy-policy.py`로 검사합니다.
 
-## 1. PR 병합 후 GitHub Pages 활성화
+## 1. GitHub Pages 활성화: 소유자에게 남은 한 번의 설정
 
-GitHub Pages 설정은 저장소 소유자 권한으로 다음을 진행해야 합니다.
+개인정보처리방침은 [자동 배포 워크플로](../.github/workflows/privacy-pages.yml)로 관리합니다. GitHub에 연결된 도구는 저장소 파일과 CI를 수정할 수 있지만 **Pages 게시 설정을 생성·변경하는 권한은 제공하지 않습니다.** GitHub Actions의 기본 `GITHUB_TOKEN` 역시 미설정 Pages 사이트를 활성화할 수 없습니다.
 
-1. 저장소 [Settings → Pages](https://github.com/dla3946gns/stillnote/settings/pages)로 이동합니다.
-2. `Build and deployment` → `Source`에서 **Deploy from a branch**를 선택합니다.
-3. `Branch: main`, 폴더 **/docs**를 선택하고 **Save**합니다.
-4. GitHub Pages 배포가 끝날 때까지 기다립니다.
-5. 다음 **예정 URL**에 접속하여 문서가 실제로 보이는지 확인합니다.
+1. 저장소 [Settings → Pages](https://github.com/dla3946gns/stillnote/settings/pages)에 접속합니다.
+2. `Build and deployment → Source`를 **GitHub Actions**로 선택합니다. 기존의 `Deploy from a branch`를 선택하지 마세요. 브랜치/폴더 지정은 필요 없습니다.
+3. [Actions → Publish Stillnote privacy policy](https://github.com/dla3946gns/stillnote/actions/workflows/privacy-pages.yml)에서 `Run workflow`를 누르고 `main`을 선택합니다. 이후 정책 파일 변경이 `main`에 반영되면 자동 배포됩니다.
+4. 워크플로의 `Deploy public privacy page` 단계가 실제로 성공했는지 확인합니다.
+5. 다음 **예정 URL**에 HTTPS로 접속하여 문서가 실제로 보이는지 확인합니다.
 
 `https://dla3946gns.github.io/stillnote/privacy/`
 
@@ -43,8 +43,8 @@ GitHub Pages 설정은 저장소 소유자 권한으로 다음을 진행해야 �
 python3 mobile/scripts/verify-privacy-policy.py
 ```
 
-CI에서 둘이 다르면 실패합니다. 앱 버전을 출시한 뒤 새로운 정책을 적용할 경우 앱 업데이트/공개 페이지 갱신 및 변경 고지의 필요 여부를 검토해야 합니다.
+PR CI에서 내용 불일치를 발견하면 실패하고, 자동 배포 작업도 일치하지 않는 문서는 배포하지 않습니다. 앱 버전을 출시한 뒤 정책을 변경할 경우 앱 업데이트/공개 페이지 갱신 및 변경 고지의 필요 여부를 검토해야 합니다.
 
 ## 계정 및 배포 범위
 
-Google Play Console 개발자 계정이 없어도 GitHub Pages 정책 웹페이지는 준비할 수 있습니다. 다만 **실제 Pages 호스팅 설정, Play Console 등록, 법률상 사업자 확인 및 Google Play 게시가 완료됐다는 의미는 아닙니다.**
+Google Play Console 개발자 계정이 없어도 GitHub Pages 정책 웹페이지를 게시할 수 있습니다. 다만 **Pages 활성화, 공개 URL 접속 확인, Play Console 등록, 법률상 사업자 확인 및 Google Play 게시는 별도 단계**입니다. 워크플로에서 Pages가 비활성화돼 있으면 안내 메시지만 출력하고 배포를 건너뜁니다.

@@ -109,7 +109,7 @@ PR CI에 **이전 main 빌드에서 실제 메모를 생성하고 새 APK를 `ad
 사용자가 지정한 운영 주체 **Anna Johnny Works**와 공개 문의 이메일 **dla3946gns@gmail.com**을 정책 문서와 Android 앱에 반영했습니다. 앱 내 `더보기 → 개인정보처리방침`을 누르면 인터넷 없이 정책 전문을 확인할 수 있습니다.
 
 - [오프라인 앱 정책 원문](androidApp/src/main/assets/privacy-policy-ko.txt)과 [웹 공개용 정책 HTML](../docs/privacy/index.html)은 CI에서 내용 일치를 검사합니다.
-- [GitHub Pages 게시 절차](PRIVACY_POLICY_PUBLISHING.md)에 따라 저장소 소유자가 `main /docs` 소스를 활성화하고, 사이트에 실제 HTTPS로 접근할 수 있는지 확인해야 합니다. **아직 공개 웹 URL의 활성화는 확인되지 않았습니다.**
+- [GitHub Pages 자동 배포](../.github/workflows/privacy-pages.yml)를 구성했습니다. [게시 안내](PRIVACY_POLICY_PUBLISHING.md)에 따라 소유자가 저장소 Pages 설정에서 **Source → GitHub Actions**를 한 번 선택해야 합니다. 이후 정책이 `main`에 반영되면 자동 배포하며, **현재 공개 웹 URL의 활성화는 확인되지 않았습니다.**
 - [Play 스토어 등록정보 초안](PLAY_STORE_LISTING_DRAFT.md)에 운영 주체/지원 이메일을 반영했지만, 실제 사업자 정보·정책 URL·스크린샷·개인정보 관련 Play Console 신고는 최종 검토가 필요합니다.
 
 ## iOS 실행
