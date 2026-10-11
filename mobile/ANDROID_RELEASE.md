@@ -1,0 +1,99 @@
+# Stillnote Android 릴리스 빌드 가이드
+
+> 이 저장소에서는 **서명키를 생성·공개·커밋하지 않습니다.** 정식 Google Play 업로드용 AAB는 소유자가 직접 관리하는 업로드 키를 사용합니다. GitHub Actions에서 빌드하는 디버그 APK는 정식 배포용이 아닙니다.
+
+## 현재 기본값
+
+| 항목 | 현재 설정 |
+|---|---|
+| applicationId | `com.stillnotes.app` (변경하지 않음) |
+| versionCode | `1` |
+| versionName | `0.1.0` |
+| Android minSdk | 26 |
+| Android targetSdk | 37 |
+| 최종 산출물 | `androidApp-release.aab` |
+| Google Play 배포 | 아직 수동 승인·등록 필요 |
+| iOS 출시 | Mac 사용 가능 시점까지 보류 |
+
+버전은 [`mobile/gradle.properties`](gradle.properties)의 `stillnoteVersionCode` 및 `stillnoteVersionName`에서 관리합니다. **Google Play에 이미 사용한 versionCode는 재사용하지 마세요.** 최초 배포 이후 업데이트마다 `versionCode`를 증가시키고 리뷰 가능한 PR로 변경하세요. Google Play 최대 versionCode는 2,100,000,000입니다.
+
+## 1. 업로드 서명키 생성 및 백업 (저장소 밖에서 수행)
+
+Google Play 앱 서명(Play App Signing)을 사용하는 것을 권장합니다. Google Play가 최종 배포 앱을 서명하는 키와 업로드에 사용하는 키는 다릅니다. 업로드 키를 **오프라인에서 생성**해 안전한 장소에 백업하고, 키 저장소 파일·비밀번호는 채팅이나 GitHub 코드/이슈에 올리지 마세요.
+
+예시(명령이 동작하는 컴퓨터에서 키 파일 위치를 안전한 곳으로 바꿔 사용):
+
+```sh
+keytool -genkeypair -v \
+  -keystore stillnote-upload.jks \
+  -alias stillnote-upload \
+  -keyalg RSA -keysize 3072 -validity 10000 \
+  -dname "CN=Stillnote Upload"
+```
+
+명령이 저장소 아래 파일을 생성하지 않도록 주의하세요. 비밀번호는 대화형 프롬프트로 설정하고 비밀번호 관리자에 기록합니다. 키 파일은 별도의 안전한 장소 두 곳 이상에 백업합니다. **테스트용 CI 임시 키를 Google Play에 절대 등록하면 안 됩니다.**
+
+Play Console에서 앱 생성 후 Play App Signing 등록 시 이 **업로드 인증서**를 사용하는 순서를 확인합니다. 기존 앱을 Google Play에 올린 적이 있다면 새 키를 만드는 대신 등록된 업로드 키와 기존 서명 구성을 먼저 확인해야 합니다.
+
+## 2. 로컬 서명 빌드
+
+Android Studio/Gradle JDK 17과 Android SDK Platform 37.0, Build Tools 36.0.0이 설치된 환경에서, 아래 네 환경 변수를 설정합니다.
+
+| 환경 변수 | 의미 |
+|---|---|
+| `STILLNOTE_UPLOAD_KEYSTORE` | 로컬 업로드 키 파일 경로 (가능하면 절대 경로) |
+| `STILLNOTE_UPLOAD_STORE_PASSWORD` | 키 저장소 비밀번호 |
+| `STILLNOTE_UPLOAD_KEY_ALIAS` | 업로드 키 별칭 |
+| `STILLNOTE_UPLOAD_KEY_PASSWORD` | 키 별칭에 해당하는 비밀번호 |
+
+저장소의 `mobile` 디렉터리에서 실행합니다.
+
+```sh
+./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:bundleRelease
+```
+
+서명키 환경 변수가 하나라도 빠지면 릴리스 빌드는 실패하게 구성했습니다. 유효한 입력이 있을 때만 릴리스 서명 설정이 활성화됩니다. AAB 출력 위치는 `mobile/androidApp/build/outputs/bundle/release/androidApp-release.aab`입니다.
+
+```sh
+jarsigner -verify -verbose -certs androidApp/build/outputs/bundle/release/androidApp-release.aab
+```
+
+실제 키의 인증서 SHA-256 지문을 확인해 Play Console에 등록된 **업로드 인증서**와 일치하는지 검증하세요. AAB는 APK처럼 휴대전화에 직접 설치하는 파일이 아닙니다. 실제 Google Play 배포 후에는 Play App Signing 인증서와 업로드 키 인증서가 다를 수 있습니다.
+
+## 3. GitHub Actions 수동 릴리스 빌드
+
+[Android signed release AAB](../.github/workflows/android-release.yml) 워크플로는 **`main` 브랜치의 수동 실행(`workflow_dispatch`)에만 동작**합니다. Google Play에 자동 게시하지 않습니다.
+
+GitHub 저장소의 **Settings → Environments**에서 `android-release` 환경을 만들고 배포 전 승인자(필요하다면 Required reviewers)를 설정하세요. 그 환경의 **Environment secrets**에 아래 네 개를 등록합니다.
+
+| Secret | 값 |
+|---|---|
+| `STILLNOTE_UPLOAD_KEYSTORE_BASE64` | 업로드 키 파일 바이트를 Base64 인코딩한 단일 줄 |
+| `STILLNOTE_UPLOAD_STORE_PASSWORD` | 키 저장소 비밀번호 |
+| `STILLNOTE_UPLOAD_KEY_ALIAS` | 키 별칭 |
+| `STILLNOTE_UPLOAD_KEY_PASSWORD` | 키 비밀번호 |
+
+Base64는 암호화가 아닙니다. 키 원본만큼 비밀로 취급하세요. 예를 들어 Linux에서 `base64 -w 0 /safe/path/stillnote-upload.jks`, macOS에서 `base64 < /safe/path/stillnote-upload.jks | tr -d '\n'`으로 한 줄을 만들 수 있습니다. 해당 결과를 로그, 메신저, PR에 붙여넣지 마세요.
+
+Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run workflow** → `main`을 선택합니다. 워크플로는 빌드와 테스트가 성공했을 때만 서명된 `androidApp-release.aab`와 `androidApp-release.aab.sha256`을 **`stillnote-signed-release-aab` 아티팩트**로 7일 동안 보관합니다. 사용 후 CI 실행 권한과 아티팩트 접근 권한을 확인하세요.
+
+### PR CI의 서명 테스트와 차이
+
+`mobile-ci.yml`은 PR마다 폐기용 임시 키를 만들어 AAB 컴파일과 서명 연결만 검증하고 **그 AAB를 업로드하지 않습니다**. 폐기용 인증서는 릴리스 키가 아닙니다. 수동 릴리스 워크플로는 별도로 등록한 소유자의 업로드 키를 사용합니다.
+
+## 4. Google Play 내부 테스트 전 체크
+
+- [ ] 앱 이름·아이콘·스크린샷·스토어 등록정보 최종 확인
+- [ ] 개인정보처리방침 및 Play Console 데이터 보안(Data safety) 신고 항목 확인
+- [ ] 콘텐츠 등급, 타깃 고객층, 개인정보 및 필수 정책 질문 완료
+- [ ] 이전에 배포된 버전보다 높은 `versionCode`, 동일한 `applicationId` 확인
+- [ ] `jarsigner` 검증과 업로드 인증서 지문 확인
+- [ ] AAB를 **내부 테스트 트랙**에 먼저 등록한 뒤 설치 및 업데이트 동작 확인
+- [ ] 시스템 파일 선택기, 백업·복원, 화면 회전, 큰 글씨 및 다수 Android 버전 QA
+- [ ] 프로덕션 출시를 위한 Play Console 정책·심사/테스터 요건 확인
+
+**데이터 보호 주의:** 이미 기기에서 사용 중인 디버그 APK는 새 업로드 키로 서명한 APK 또는 Play 앱과 인증서가 달라 덮어쓰기 설치가 불가능할 수 있습니다. **기존 앱을 삭제하기 전에 JSON 백업을 외부에 저장하고 그 파일을 복원 가능한지 확인하세요.** 앱 삭제 시 기기 내부 저장소의 메모가 사라질 수 있습니다. 릴리스 설치/업데이트 전략은 실제 Play 내부 테스트에서 따로 검증합니다.
+
+## 범위
+
+이 단계에서 Google Play Developer 계정 생성, 키 생성, Secret 실제 등록, AAB 실제 스토어 제출, 결제, 앱 심사나 자동 게시를 실행하지 않습니다. iOS 빌드/출시도 진행하지 않습니다.

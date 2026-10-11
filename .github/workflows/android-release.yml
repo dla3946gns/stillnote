@@ -1,0 +1,86 @@
+name: Android signed release AAB
+
+# Explicitly requested build only. No Play Store upload or automatic rollout.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stillnote-android-signed-release
+  cancel-in-progress: false
+
+jobs:
+  signed-release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: android-release
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK for bundle build
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER" || { echo 'Android SDK command-line tools missing'; exit 1; }
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Restore upload keystore from protected secrets
+        shell: bash
+        env:
+          STILLNOTE_UPLOAD_KEYSTORE_BASE64: ${{ secrets.STILLNOTE_UPLOAD_KEYSTORE_BASE64 }}
+          STILLNOTE_UPLOAD_STORE_PASSWORD: ${{ secrets.STILLNOTE_UPLOAD_STORE_PASSWORD }}
+          STILLNOTE_UPLOAD_KEY_ALIAS: ${{ secrets.STILLNOTE_UPLOAD_KEY_ALIAS }}
+          STILLNOTE_UPLOAD_KEY_PASSWORD: ${{ secrets.STILLNOTE_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in STILLNOTE_UPLOAD_KEYSTORE_BASE64 STILLNOTE_UPLOAD_STORE_PASSWORD STILLNOTE_UPLOAD_KEY_ALIAS STILLNOTE_UPLOAD_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required GitHub Actions secret $name is not configured."
+              exit 1
+            fi
+          done
+          umask 077
+          KEYSTORE="$RUNNER_TEMP/stillnote-upload-keystore.jks"
+          printf '%s' "$STILLNOTE_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE" || { echo "::error::Upload keystore is empty"; exit 1; }
+          echo "STILLNOTE_UPLOAD_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
+      - name: Verify tests and build signed release AAB
+        shell: bash
+        env:
+          STILLNOTE_UPLOAD_STORE_PASSWORD: ${{ secrets.STILLNOTE_UPLOAD_STORE_PASSWORD }}
+          STILLNOTE_UPLOAD_KEY_ALIAS: ${{ secrets.STILLNOTE_UPLOAD_KEY_ALIAS }}
+          STILLNOTE_UPLOAD_KEY_PASSWORD: ${{ secrets.STILLNOTE_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          bash ./gradlew --no-daemon :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:bundleRelease --stacktrace
+          BUNDLE="androidApp/build/outputs/bundle/release/androidApp-release.aab"
+          test -s "$BUNDLE"
+          jarsigner -verify "$BUNDLE" > "$RUNNER_TEMP/stillnote-aab-verification.txt"
+          grep -q 'jar verified' "$RUNNER_TEMP/stillnote-aab-verification.txt"
+          sha256sum "$BUNDLE" > "$BUNDLE.sha256"
+      - name: Remove signing material from runner
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/stillnote-upload-keystore.jks" "$RUNNER_TEMP/stillnote-aab-verification.txt"
+      - name: Upload signed bundle for manual Play Console submission
+        uses: actions/upload-artifact@v4
+        with:
+          name: stillnote-signed-release-aab
+          path: |
+            mobile/androidApp/build/outputs/bundle/release/androidApp-release.aab
+            mobile/androidApp/build/outputs/bundle/release/androidApp-release.aab.sha256
+          if-no-files-found: error
+          retention-days: 7
