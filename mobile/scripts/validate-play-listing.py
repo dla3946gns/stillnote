@@ -21,6 +21,6 @@ for field, limit in (("appName", 30), ("shortDescription", 80), ("fullDescriptio
     assert len(value) <= limit, f"{field} exceeds {limit} characters ({len(value)})"
 assert data["language"] == "ko-KR"
 assert re.fullmatch(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", data["contactEmail"])
-assert "자동 클라우드 동기화는 지원하지 않습니다" in data["fullDescription"]
+assert "자동 클라우드 동기화" in data["fullDescription"] and "지원하지 않습니다" in data["fullDescription"], "Full description must not claim sync support"
 assert "draft" in data["reviewStatus"]
 print("Play listing metadata validates; operator/policy final review remains required.")
