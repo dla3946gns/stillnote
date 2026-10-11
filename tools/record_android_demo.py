@@ -122,7 +122,7 @@ class Demo:
                 continue
             target = node
             while target is not None:
-                if field and target.get("class") == "android.widget.EditText":
+                if field and target.get("clickable") == "true":
                     break
                 if not field and target.get("clickable") == "true":
                     break
