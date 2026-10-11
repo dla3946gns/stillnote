@@ -161,7 +161,8 @@ fun StillnoteApp(
                     else "편집한 내용이 아직 저장되지 않았어요.")
             },
             confirmButton = {
-                TextButton(onClick = { finishPendingAction(save = true) }, enabled = !state.loadFailed) {
+                TextButton(onClick = { finishPendingAction(save = true) },
+                    modifier = Modifier.testTag("unsaved-dialog-save"), enabled = !state.loadFailed) {
                     Text("저장")
                 }
             },
@@ -184,7 +185,11 @@ fun StillnoteApp(
                     deleteId = null
                 }, enabled = !state.saveFailed && !state.loadFailed) { Text("삭제") }
             },
-            dismissButton = { TextButton(onClick = { deleteId = null }) { Text("취소") } }
+            dismissButton = {
+                TextButton(onClick = { deleteId = null }, modifier = Modifier.testTag("delete-dialog-cancel")) {
+                    Text("취소")
+                }
+            }
         )
     }
     if (model.pendingImport != null) {
