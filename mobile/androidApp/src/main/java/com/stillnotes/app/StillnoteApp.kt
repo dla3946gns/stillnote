@@ -48,10 +48,17 @@ fun StillnoteApp(
     val store = model.store
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    // Leaving a note editor must not leave the previous text field's IME on the list.
+    // Avoid dismissing a newly focused search IME during the very first
+    // composition. Only clear focus when the user actually switches editors
+    // or returns to the note list; a startup effect can race with a first tap.
+    var previousActiveNoteId by remember { mutableStateOf(state.activeNote?.id) }
     LaunchedEffect(state.activeNote?.id) {
-        focusManager.clearFocus(force = true)
-        keyboardController?.hide()
+        val currentId = state.activeNote?.id
+        if (previousActiveNoteId != currentId) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+        previousActiveNoteId = currentId
     }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
