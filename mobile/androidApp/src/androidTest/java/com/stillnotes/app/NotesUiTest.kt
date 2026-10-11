@@ -241,6 +241,21 @@ class NotesUiTest {
     }
 
     @Test
+    fun privacyPolicyIsReadableOfflineFromNotesMenu() {
+        compose.onNodeWithText("더보기").performClick()
+        compose.onNodeWithText("개인정보처리방침").performClick()
+        compose.onNodeWithTag("privacy-policy-body").assertIsDisplayed()
+        compose.onNodeWithTag("privacy-policy-body")
+            .assertTextContains("Anna Johnny Works", substring = true)
+        compose.onNodeWithTag("privacy-policy-body")
+            .assertTextContains("dla3946gns@gmail.com", substring = true)
+
+        compose.onNodeWithTag("privacy-policy-close").performClick()
+        compose.onNodeWithTag("privacy-policy-body").assertDoesNotExist()
+        compose.onNodeWithTag("notes-search").assertIsDisplayed()
+    }
+
+    @Test
     fun appRendersCorrectBackgroundInCurrentLightOrDarkMode() {
         compose.onNodeWithText("Stillnote").assertIsDisplayed()
         val night = (targetContext().resources.configuration.uiMode

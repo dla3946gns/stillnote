@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
+      - 'docs/**'
       - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 
@@ -35,6 +36,8 @@ jobs:
           test -n "$SDKMANAGER" || { echo 'Android SDK command-line tools missing'; exit 1; }
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Verify offline and public privacy policy match
+        run: python3 scripts/verify-privacy-policy.py
       - name: Shared notes host tests and Android build
         run: bash ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:assembleDebug --stacktrace
       - name: Upload notes test results
