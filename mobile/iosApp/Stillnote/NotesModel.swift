@@ -39,7 +39,9 @@ private final class LocalNotesStorage: NSObject, IosNotesFiles {
     }
 }
 
-private final class StoreObserver: NSObject, NotesObserver {
+// NotesModel calls NotesStore on MainActor; its observer callbacks are synchronous.
+@MainActor
+private final class StoreObserver: NSObject, @preconcurrency NotesObserver {
     private let onChange: @MainActor (NotesState) -> Void
 
     init(onChange: @escaping @MainActor (NotesState) -> Void) {
@@ -48,7 +50,7 @@ private final class StoreObserver: NSObject, NotesObserver {
     }
 
     func onChanged(state: NotesState) {
-        MainActor.assumeIsolated { onChange(state) }
+        onChange(state)
     }
 }
 
