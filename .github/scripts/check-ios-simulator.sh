@@ -73,18 +73,63 @@ PY
     xcrun simctl boot "$SIMULATOR_ID"
     xcrun simctl bootstatus "$SIMULATOR_ID" -b
     xcrun simctl install "$SIMULATOR_ID" "$APP"
-    xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID" \
-      | tee "$ARTIFACTS/launch.txt"
-    sleep 5
-    xcrun simctl spawn "$SIMULATOR_ID" launchctl list > "$ARTIFACTS/launchctl.txt"
-    awk -v bundle="$BUNDLE_ID" \
-      'index($0, bundle) && $1 ~ /^[0-9]+$/ { found=1 } END { exit !found }' \
-      "$ARTIFACTS/launchctl.txt"
-    xcrun simctl io "$SIMULATOR_ID" screenshot "$ARTIFACTS/launch.png"
+    launch_and_capture() {
+      local scenario="$1"
+      xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID" \
+        | tee "$ARTIFACTS/$scenario-launch.txt"
+      sleep 5
+      xcrun simctl spawn "$SIMULATOR_ID" launchctl list > "$ARTIFACTS/$scenario-processes.txt"
+      awk -v bundle="$BUNDLE_ID" \
+        'index($0, bundle) && $1 ~ /^[0-9]+$/ { found=1 } END { exit !found }' \
+        "$ARTIFACTS/$scenario-processes.txt"
+      xcrun simctl io "$SIMULATOR_ID" screenshot "$ARTIFACTS/$scenario.png"
+    }
+    launch_and_capture launch
+
+    # Use only synthetic fixtures in this ephemeral simulator's app container.
+    # Exercise Swift -> Kotlin storage callbacks, including a real UTF-8 I/O error.
+    CONTAINER="$(xcrun simctl get_app_container "$SIMULATOR_ID" "$BUNDLE_ID" data)"
+    NOTES_FILE="$CONTAINER/Library/Application Support/Stillnote/stillnote-notes.json"
+    xcrun simctl terminate "$SIMULATOR_ID" "$BUNDLE_ID"
+    python3 - "$NOTES_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps([{
+    "id": "ios-ci-synthetic-note",
+    "title": "iOS CI 저장 확인",
+    "body": "클라우드 Mac에서 저장된 메모를 다시 읽었어요.",
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000,
+    "pinned": False,
+}], ensure_ascii=False), encoding="utf-8")
+PY
+    cp "$NOTES_FILE" "$ARTIFACTS/synthetic-note.json"
+    launch_and_capture restored-note
+    cmp "$NOTES_FILE" "$ARTIFACTS/synthetic-note.json"
+
+    xcrun simctl terminate "$SIMULATOR_ID" "$BUNDLE_ID"
+    python3 - "$NOTES_FILE" <<'PY'
+import sys
+from pathlib import Path
+
+Path(sys.argv[1]).write_bytes(b"\xff\xfeinvalid-utf8")
+PY
+    launch_and_capture read-error
+    python3 - "$NOTES_FILE" <<'PY'
+import sys
+from pathlib import Path
+
+assert Path(sys.argv[1]).read_bytes() == b"\xff\xfeinvalid-utf8", "Unreadable notes were overwritten"
+PY
     {
       echo '### iOS simulator check'
       echo '- KMP framework and SwiftUI app compiled for arm64 iOS Simulator.'
-      echo '- Installed and launched com.stillnotes.app; process remained alive for the startup check.'
+      echo '- Installed and launched com.stillnotes.app; startup passed with empty storage, a synthetic saved note, and unreadable UTF-8.'
+      echo '- Existing and unreadable storage bytes remained unchanged after launch.'
       echo '- Artifact contains the simulator-only app, environment, build log and launch screenshot.'
       echo '- Physical iPhone installation and TestFlight signing still require a separate release workflow.'
     } >> "$GITHUB_STEP_SUMMARY"
