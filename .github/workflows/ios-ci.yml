@@ -1,0 +1,48 @@
+name: iOS simulator validation
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/iosApp/**'
+      - 'mobile/shared/**'
+      - 'mobile/gradle/**'
+      - 'mobile/gradle.properties'
+      - 'mobile/build.gradle.kts'
+      - 'mobile/settings.gradle.kts'
+      - 'mobile/gradlew'
+      - '.github/workflows/ios-ci.yml'
+      - '.github/scripts/check-ios-simulator.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    name: Unsigned iOS build and simulator launch
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build Kotlin framework and SwiftUI app without signing
+        run: bash .github/scripts/check-ios-simulator.sh build
+      - name: Install and launch on iPhone simulator
+        run: bash .github/scripts/check-ios-simulator.sh launch
+      - name: Upload simulator app, build logs and launch screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stillnote-ios-simulator-qa
+          path: ${{ runner.temp }}/stillnote-ios-qa/
+          if-no-files-found: warn
+          retention-days: 14
