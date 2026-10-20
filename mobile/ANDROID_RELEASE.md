@@ -129,6 +129,7 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 - 이 대화의 연결된 GitHub 도구로는 `android-release` Environment의 Secret **등록 이름이나 값**, 개인 컴퓨터의 키 파일, Play Console의 업로드 인증서를 직접 확인할 수 없습니다. 따라서 **기존 업로드 키 상태는 미확인**이고 신규 생성이나 교체를 진행하지 않았습니다.
 - 정식 빌드 전에는 기존 키 파일·암호·별칭을 소유자의 보안 저장소에서 확인하고, Play Console의 **업로드 키 인증서** SHA-256과 실제 업로드 키의 공개 인증서 지문을 비교합니다. Google Play의 **앱 서명 키** 지문과 혼동하지 마세요.
 - 값이 확인된 뒤에만 GitHub `android-release` Environment Secrets 4개를 안전하게 등록하고 수동 릴리스 워크플로를 실행합니다. 비밀값/키 파일/Base64는 이슈, PR, 채팅, 로그에 붙여넣지 마세요.
+- **추가 실측 결과:** 2026-10-20에 [일회성 보호 환경 검사](https://github.com/dla3946gns/stillnote/actions/runs/39391470951)를 실행했습니다. 작업은 정상 종료했지만 필요한 업로드 서명 Secret 4개 중 **최소 하나가 없거나 해당 환경에서 접근 불가**하여 정식 서명 AAB 빌드는 요청되지 않았습니다. 어떤 키 값도 출력하지 않았습니다. 이 검사만을 위해 추가했던 자동 트리거 파일은 결과 확인 후 제거했습니다. **폐기용 CI 서명 AAB는 Play 업로드 용도로 사용하면 안 됩니다.**
 
 ## 4. Google Play 내부 테스트 전 체크
 
