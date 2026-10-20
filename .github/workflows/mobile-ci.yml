@@ -82,6 +82,65 @@ jobs:
           # Never upload this bundle: its key is discarded after this step.
           rm -f "$BUNDLE"
 
+      - name: Preserve release privacy preflight evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="androidApp/build/release-privacy-preflight"
+          mkdir -p "$OUT"
+          bash ./gradlew :androidApp:dependencies --configuration releaseRuntimeClasspath --console=plain > "$OUT/release-runtime-dependencies.txt"
+          python3 - <<'PY'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          out = Path("androidApp/build/release-privacy-preflight")
+          manifest_dirs = {"merged_manifest", "merged_manifests", "packaged_manifests"}
+          paths = sorted(p for p in Path("androidApp/build/intermediates").rglob("AndroidManifest.xml")
+                         if "release" in p.parts and manifest_dirs.intersection(p.parts))
+          if not paths:
+              raise SystemExit("No merged/packaged release manifest found after bundleRelease")
+          android = "{http://schemas.android.com/apk/res/android}"
+          records = []
+          for p in paths:
+              root = ET.parse(p).getroot()
+              app = root.find("application")
+              permissions = sorted(e.get(android + "name") for e in root
+                                   if e.tag.startswith("uses-permission"))
+              destination = out / p
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(p, destination)
+              records.append({"path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest(),
+                              "package": root.get("package"), "permissions": permissions,
+                              "allowBackup": app.get(android + "allowBackup") if app is not None else None,
+                              "debuggable": app.get(android + "debuggable") if app is not None else None})
+              if app is None or app.get(android + "allowBackup") != "false":
+                  raise SystemExit(f"Release backup flag needs privacy review: {p}")
+              if app.get(android + "debuggable", "false") != "false":
+                  raise SystemExit(f"Release unexpectedly debuggable: {p}")
+              unexpected = [x for x in permissions if x != "com.stillnotes.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"]
+              if unexpected:
+                  raise SystemExit(f"New release permissions need Data safety review: {unexpected}")
+          report = {"git_sha": os.environ.get("GITHUB_SHA"), "variant": "release",
+                    "manifests": records,
+                    "limits": ["Static manifest and dependency evidence, not a network-traffic audit.",
+                               "CI smoke key is disposable; its AAB is deleted and must not be uploaded to Play.",
+                               "Recheck the actual owner-signed AAB before review or release."]}
+          (out / "release-privacy-summary.json").write_text(json.dumps(report, indent=2) + "\n")
+          (out / "README.txt").write_text(
+              "Release-variant privacy preflight only. No production signing keys included.\n"
+              "Review all runtime dependencies alongside app code and user-initiated transfers.\n"
+              "This is not proof of encryption, zero collection, or security certification.\n"
+              "The owner-signed Play AAB still needs final verification.\n")
+          print(json.dumps(report, indent=2))
+          PY
+      - name: Upload release privacy preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: stillnote-release-privacy-preflight
+          path: mobile/androidApp/build/release-privacy-preflight/
+          if-no-files-found: error
+          retention-days: 30
+
   android-upgrade:
     name: Android in-place upgrade preserves saved notes
     needs: android
