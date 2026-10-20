@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.view.WindowInsets
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
@@ -65,6 +66,24 @@ class NotesUiTest {
                 ?.getInsets(WindowInsets.Type.ime())?.bottom ?: 0) > 0
         }
         return visible
+    }
+
+    /**
+     * Headless Android emulators sometimes reject the initial IME show request
+     * even when a text field is focused. Retry a user tap, but still require
+     * the actual software keyboard to appear; do not skip IME layout coverage.
+     */
+    private fun tapUntilKeyboardVisible(tag: String) {
+        repeat(3) { attempt ->
+            compose.onNodeWithTag(tag).performClick()
+            compose.waitForIdle()
+            try {
+                compose.waitUntil(6_000) { isKeyboardVisible() }
+                return
+            } catch (error: ComposeTimeoutException) {
+                if (attempt == 2) throw error
+            }
+        }
     }
 
     private fun captureKeyboardLayout(name: String) {
@@ -237,22 +256,20 @@ class NotesUiTest {
     @Test
     fun searchAndEditorRemainUsableWithTheKeyboardOpen() {
         // Regression for a collapsed UI with adjustResize and a visible IME.
-        compose.onNodeWithTag("notes-search").performClick()
-        compose.waitUntil(10_000) { isKeyboardVisible() }
+        tapUntilKeyboardVisible("notes-search")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         compose.onNodeWithTag("notes-search").performTextInput("검색 키보드")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         captureKeyboardLayout("keyboard-list")
 
         compose.onNodeWithText("새 메모").performClick()
-        compose.onNodeWithTag("note-title").performClick()
-        compose.waitUntil(10_000) { isKeyboardVisible() }
+        tapUntilKeyboardVisible("note-title")
         compose.onNodeWithTag("note-title").assertIsDisplayed()
         compose.onNodeWithTag("note-title").performTextInput("키보드 레이아웃")
         compose.onNodeWithTag("note-title").assertIsDisplayed()
 
-        compose.onNodeWithTag("note-body").performScrollTo().performClick()
-        compose.waitUntil(10_000) { isKeyboardVisible() }
+        compose.onNodeWithTag("note-body").performScrollTo()
+        tapUntilKeyboardVisible("note-body")
         compose.onNodeWithTag("note-body").assertIsDisplayed()
         compose.onNodeWithTag("note-body").performTextInput("본문 입력을 확인합니다.")
         compose.onNodeWithTag("note-body").assertIsDisplayed()
