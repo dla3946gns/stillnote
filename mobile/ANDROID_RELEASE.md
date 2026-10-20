@@ -101,7 +101,7 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 - [GitHub Pages 공개용 정책 페이지](../docs/privacy/index.html)
 - [웹사이트 게시와 공개 URL 검증 절차](PRIVACY_POLICY_PUBLISHING.md)
 
-운영 주체는 **Anna Johnny Works**, 사용자 문의 이메일은 **dla3946gns@gmail.com**으로 확인되어 앱과 정책 페이지에 반영했습니다. Android 앱의 `더보기 → 개인정보처리방침`에서 **인터넷 없이 전체 정책을 확인**할 수 있도록 구현했습니다. CI는 앱 내부 정책과 웹페이지 정책의 내용 일치를 자동 검사합니다. 다만 정책 웹페이지의 **실제 HTTPS 공개 URL은 아직 GitHub Pages 설정 및 접근 확인이 필요**합니다. Google Play Data safety 설문, 운영 주체 사업자 관련 필수 정보 및 최종 공개 정책의 법적 검토도 별도로 필요합니다.
+운영 주체는 **Anna Johnny Works**, 사용자 문의 이메일은 **dla3946gns@gmail.com**으로 확인되어 앱과 정책 페이지에 반영했습니다. Android 앱의 `더보기 → 개인정보처리방침`에서 **인터넷 없이 전체 정책을 확인**할 수 있도록 구현했습니다. CI는 앱 내부 정책과 웹페이지 정책의 내용 일치를 자동 검사합니다. 정책 페이지의 **실제 HTTPS 공개와 본문 일치는 GitHub Pages 배포 성공으로 확인**했습니다(2026-10-20). 이후 정책을 수정하면 동일한 검증을 다시 수행해야 합니다. Google Play Data safety 설문, 운영 주체 사업자 관련 필수 정보 및 최종 공개 정책의 법적 검토도 별도로 필요합니다.
 
 ## Google Play 등록정보·데이터 보안·이미지
 
@@ -115,6 +115,13 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 공개 개인정보처리방침: https://dla3946gns.github.io/stillnote/privacy/
 웹 URL의 HTTPS·본문은 [Pages 실행](https://github.com/dla3946gns/stillnote/actions/runs/38173211408)에서 확인했습니다. Play Console 등록과 최종 Data safety 응답은 운영자 확인이 필요합니다.
 
+## 2026-10-20 재개 점검 기록
+
+- 공식 웹사이트와 개인정보처리방침의 GitHub Pages 배포가 성공했습니다: https://github.com/dla3946gns/stillnote/actions/runs/39376529660
+- Google Search Console 소유권 확인 안내를 받았습니다. Play Console의 조직 전환에 필요한 D-U-N-S **9자리 번호 발급은 별개**입니다.
+- Play Console에는 Stillnote 앱이 생성된 상태이지만, **정식 업로드 키 인증서·소유자 서명 AAB·내부 테스트 배포는 미확인/미완료**입니다. 실제 Play 제출·심사/공개는 하지 않았습니다.
+- PR #10의 폐기용 키 AAB 사전 검증은 본문 권한·백업 기준에 합격했지만, Play 제출용 서명 결과를 대체하지 않습니다. PR #11은 정식 서명 워크플로에 동일한 정적 검증을 추가합니다.
+
 ## 4. Google Play 내부 테스트 전 체크
 
 - [ ] `PLAY_STORE_LISTING_DRAFT.md`에서 설명을 검토하고 실제 스토어 등록정보로 확정
@@ -122,8 +129,8 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 - [x] Android 앱 내 정책 전문 오프라인 열람 기능 구현 및 자동 UI 테스트 추가
 - [ ] 정책 메뉴가 실제 삼성 휴대전화에서 정상 작동하는지 확인
 - [x] GitHub Pages 자동 배포 워크플로 준비 및 정책 본문 일치 검증
-- [ ] 소유자가 Settings → Pages → Source에서 **GitHub Actions**를 선택한 후 워크플로 수동 실행
-- [ ] 예정 정책 URL 공개 접근 및 HTTPS 확인
+- [x] 소유자가 Settings → Pages → Source에서 **GitHub Actions**를 선택하고 Pages 배포 성공 확인
+- [x] 개인정보처리방침 공개 URL의 HTTPS와 본문 확인
 - [ ] 포실이 앱 아이콘·대표 이미지·실제 화면 스크린샷 최종 검수 및 Play Console 등록정보 승인
 - [ ] 개인정보처리방침 및 Play Console 데이터 보안(Data safety) 신고 항목 확인
 - [ ] 콘텐츠 등급, 타깃 고객층, 개인정보 및 필수 정책 질문 완료
