@@ -71,11 +71,11 @@ jobs:
           jarsigner -verify "$BUNDLE" > "$RUNNER_TEMP/stillnote-aab-verification.txt"
           grep -q 'jar verified' "$RUNNER_TEMP/stillnote-aab-verification.txt"
           sha256sum "$BUNDLE" > "$BUNDLE.sha256"
+          bash ./gradlew :androidApp:dependencies --configuration releaseRuntimeClasspath --console=plain > androidApp/build/outputs/bundle/release/release-runtime-dependencies.txt
       - name: Verify final release manifest and preserve dependency evidence
         shell: bash
         run: |
           set -euo pipefail
-          bash ./gradlew :androidApp:dependencies --configuration releaseRuntimeClasspath --console=plain > androidApp/build/outputs/bundle/release/release-runtime-dependencies.txt
           python3 scripts/verify-signed-release-privacy.py
       - name: Remove signing material from runner
         if: always()
