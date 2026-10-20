@@ -1,0 +1,46 @@
+name: One-time Stillnote upload signing readiness
+
+# This workflow runs once when introduced on main; it never publishes to Play.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/android-signing-readiness-once.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  check-owner-upload-signing:
+    if: github.repository == 'dla3946gns/stillnote'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: android-release
+    steps:
+      - name: Check signing inputs without revealing values
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.STILLNOTE_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.STILLNOTE_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.STILLNOTE_UPLOAD_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.STILLNOTE_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_B64" || -z "$STORE_PASS" || -z "$KEY_ALIAS" || -z "$KEY_PASS" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Upload signing inputs are incomplete or inaccessible. No release build dispatched.'
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+            echo '::notice::Four required signing inputs are available. Requesting owner-signed release workflow.'
+          fi
+      - name: Request manual-submission signed AAB build
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run android-release.yml --ref main --repo "$GITHUB_REPOSITORY"
+          echo '::notice::Signed AAB build requested; no Google Play upload or rollout is performed.'
