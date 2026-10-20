@@ -3,7 +3,9 @@ package com.stillnotes.app
 import android.content.ContentValues
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
 import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ComposeTimeoutException
@@ -69,9 +71,11 @@ class NotesUiTest {
     }
 
     /**
-     * Headless Android emulators sometimes reject the initial IME show request
-     * even when a text field is focused. Retry a user tap, but still require
-     * the actual software keyboard to appear; do not skip IME layout coverage.
+     * Headless emulators can reject a text field's initial IME show request.
+     * Re-tapping an already focused field is not a fresh request. After a
+     * timeout, explicitly request the system keyboard again and require the
+     * actual window IME inset to become visible before taking screenshots.
+     * This retry is in test-only code, never in production UI.
      */
     private fun tapUntilKeyboardVisible(tag: String) {
         repeat(3) { attempt ->
@@ -82,6 +86,18 @@ class NotesUiTest {
                 return
             } catch (error: ComposeTimeoutException) {
                 if (attempt == 2) throw error
+                scenario.onActivity { activity ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        activity.window.decorView.windowInsetsController
+                            ?.show(WindowInsets.Type.ime())
+                    } else {
+                        val input = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
+                            as InputMethodManager
+                        activity.currentFocus?.let {
+                            input.showSoftInput(it, InputMethodManager.SHOW_IMPLICIT)
+                        }
+                    }
+                }
             }
         }
     }
