@@ -7,3 +7,9 @@ __pycache__/
 .sites-runtime/
 .sites-checkout/
 node_modules/
+# Never commit Android/Java signing keystores (including root-level files).
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pkcs12
