@@ -60,6 +60,20 @@ jarsigner -verify -verbose -certs androidApp/build/outputs/bundle/release/androi
 
 실제 키의 인증서 SHA-256 지문을 확인해 Play Console에 등록된 **업로드 인증서**와 일치하는지 검증하세요. AAB는 APK처럼 휴대전화에 직접 설치하는 파일이 아닙니다. 실제 Google Play 배포 후에는 Play App Signing 인증서와 업로드 키 인증서가 다를 수 있습니다.
 
+### Work 모드 없이 로컬에서 안전하게 설정하는 도구
+
+GitHub 저장소에 [업로드 키 설정 스크립트](scripts/setup_stillnote_signing.py)와 [오프라인 테스트](scripts/test_setup_stillnote_signing.py)를 추가했습니다. 이 파일에는 실제 키·비밀번호를 포함하지 않습니다. **키와 비밀번호는 사용자의 컴퓨터에서만 입력**하며, GitHub Actions Environment Secrets로 등록할 때에도 소스 코드·GitHub 이슈·채팅에 기록하지 않습니다.
+
+Python 3.9+, Java JDK 17+ 및 [GitHub CLI](https://cli.github.com/)가 설치된 컴퓨터에서 `gh auth login`으로 로그인하고 저장소의 `mobile` 폴더에서 다음을 실행하세요.
+
+```sh
+python3 scripts/setup_stillnote_signing.py
+```
+
+Windows PowerShell에서는 `py scripts/setup_stillnote_signing.py`로 실행할 수 있습니다. 이 스크립트는 **기존 업로드 키 확인 → 개인키 비밀번호 검증 → 업로드 인증서 SHA-256 대조 승인 → 별도 안전한 위치에 백업 → GitHub Secrets 등록 → 정식 AAB 빌드 요청** 순서로 작동하며, 각 중요한 단계마다 확인을 받습니다. GitHub Environment가 이미 있으면 보호 설정을 변경하지 않습니다. 기존 Secret 이름이 있으면 덮어쓰기 전 명시적 확인을 요구합니다.
+
+기존 Play 업로드 키와 인증서가 등록되어 있다면 임의로 새 키를 만들면 안 됩니다. 새 키 사용 여부는 소유자가 Play Console을 확인한 뒤 결정해야 합니다. 키 원본/백업/비밀번호를 대화에 붙여넣지 마세요. **CI에서는 테스트 전용 키만 생성하고 자동으로 폐기**하므로, CI 통과는 사용자 키가 등록됐다는 뜻이 아닙니다.
+
 ## 3. GitHub Actions 수동 릴리스 빌드
 
 [Android signed release AAB](../.github/workflows/android-release.yml) 워크플로는 **`main` 브랜치의 수동 실행(`workflow_dispatch`)에만 동작**합니다. Google Play에 자동 게시하지 않습니다.
