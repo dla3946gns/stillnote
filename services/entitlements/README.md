@@ -50,22 +50,64 @@ Apple 개발자 등록비·Google/Apple 인앱 결제 수수료는 별도입니�
 - 서버 및 JWT 검증 단위 테스트. 실제 Firebase/Cloudflare 계정은 미생성,
   **실제 배포·유료 전환 없음**.
 
-## 실제 배포 전에 필요한 계정 작업 (사용자 승인/콘솔 설정)
+## 무료 서버 환경 연결 절차 (안전한 수동 배포)
 
-1. Firebase 프로젝트를 **Spark 무료**로 만들고 Authentication에서
-   이메일/비밀번호 제공업체를 활성화. Android와 iOS 앱을 **같은 Firebase
-   프로젝트**에 등록. 계정 생성 및 복원 화면, 개인정보처리방침·회원 탈퇴
-   화면은 후속 클라이언트 PR에서 구현합니다.
-2. Cloudflare 계정 **Workers Free**에서 D1 데이터베이스 하나 생성.
-   `wrangler.example.toml`을 로컬 `wrangler.toml`로 복사해 D1 ID와
-   Firebase 프로젝트 ID 입력. 관리용 자격 증명은 GitHub에 커밋 금지.
-3. `wrangler d1 execute stillnote-entitlements --file=migrations/0001_verified_purchases.sql --remote`
-   로 실제 D1 스키마 생성 후 `wrangler deploy`. 무료 플랜을 유지하고
-   유료 플랜·결제 수단 등록은 사용자 승인 전 진행하지 않습니다.
-4. 기기 앱에서는 로그인 시 Firebase ID 토큰을 안전하게 받고
-   `GET /v1/entitlement`를 호출. 서버 장애/오프라인 시 기존 무료 메모
-   기능은 영향 없이 유지. Plus 캐시는 재검증 정책과 환불 대응을 설계한 후 추가.
-5. **구매 검증 및 계정 연동을 완성하기 전에는 실제 판매 금지.**
+**현재 상태:** 서버 소스 및 단위 테스트는 준비되어 있지만 Firebase/Cloudflare 계정
+로그인, 실제 Spark/Free 플랜 선택, D1 생성·마이그레이션·Worker 배포는
+**아직 진행하지 않았습니다**. 이 저장소에 비밀키를 넣지 마세요.
+
+1. [Firebase Console](https://console.firebase.google.com/)에서 프로젝트를 생성합니다.
+   **Spark(무료), 결제 계정 연결 없음**인지 확인하고
+   Build → Authentication → Sign-in method → **Email/Password**만 활성화합니다.
+   프로젝트 설정의 **프로젝트 ID**를 확인합니다. 전화번호/SMS 제공업체나
+   유료 제품은 구성하지 않습니다. 무료 메모 사용에는 로그인을 요구하지 않습니다.
+2. [Cloudflare Dashboard](https://dash.cloudflare.com/)에서 **Workers Free** 플랜을
+   선택하고 D1의 무료 한도를 확인합니다. 유료 플랜/카드 입력을 요구하면
+   진행을 중단하고 승인받습니다. 실제 계정 소유자의 로그인은 직접 수행해야 합니다.
+3. 컴퓨터에서 Node.js 22 이상으로 아래 명령을 실행합니다.
+   Cloudflare 로그인 시 계정 소유자 본인이 브라우저 인증을 완료합니다.
+
+   ```sh
+   cd services/entitlements
+   npm ci
+   npm test
+   npx wrangler@4 login
+   npx wrangler@4 whoami
+   npx wrangler@4 d1 create stillnote-entitlements --location apac
+   ```
+
+   D1 생성 출력의 `database_id` UUID를 복사합니다. 자동으로 프로젝트 설정
+   파일에 D1 바인딩을 추가할지 질문하면 **No**를 선택합니다.
+4. Firebase 프로젝트 ID와 Cloudflare D1 UUID를 사용해 *로컬 전용* 배포 설정을
+   생성합니다. 이 스크립트는 **서버를 생성·배포하지 않으며 비용을 발생시키지 않습니다**.
+   이미 `wrangler.toml`이 있으면 덮어쓰지 않고 중단합니다.
+
+   ```sh
+   node scripts/configure-free.mjs --firebase-project-id YOUR_FIREBASE_PROJECT_ID --d1-database-id YOUR_D1_UUID
+   ```
+
+   `wrangler.toml`은 `.gitignore`에 포함되어 GitHub에 올리지 않습니다.
+   Firebase 프로젝트 ID와 D1 UUID는 **비밀키가 아니지만**, 사용자 메모·
+   인증 토큰·계정 자격 증명과 함께 저장/공개하지 마세요.
+5. `wrangler.toml` 내용을 확인하고, 여전히 Spark + Workers Free + D1 Free인지
+   다시 확인한 뒤 *명시적으로 원격 배포할 때만* 다음 명령을 실행합니다.
+
+   ```sh
+   npx wrangler@4 d1 execute stillnote-entitlements --remote --file=migrations/0001_verified_purchases.sql
+   npx wrangler@4 deploy
+   ```
+
+   D1 마이그레이션은 검증된 거래 기록을 담는 빈 테이블만 만듭니다.
+   Worker의 `*.workers.dev` URL에 `/health`를 붙여 200 응답을 확인합니다.
+   토큰 없이 `/v1/entitlement`에 접근하면 **401이 정상**입니다.
+6. 테스트용 Firebase 계정의 **실제 발급 ID 토큰**과 **실제 Workers/D1 바인딩**
+   으로 인증 및 권한 조회를 통합 검증합니다. 성공 전에는 Plus 구매·복원을
+   활성화하지 않습니다. Google Play/Apple 구매 검증·환불 동기화·사용자 계정
+   탈퇴 처리는 후속 개발 사항입니다.
+
+**제약:** 무료 한도를 초과하면 API 요청이 실패할 수 있고, Cloudflare 및
+Firebase 계정이 연결되지 않은 상황에서는 GitHub Actions CI 통과만으로
+실제 운영 환경의 보안·가용성·비용을 보장할 수 없습니다.
 
 ## 다음 보안 구현 (이번 PR에서 완료되지 않음)
 
