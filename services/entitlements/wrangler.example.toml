@@ -1,0 +1,13 @@
+# Example only: copy to wrangler.toml locally after creating a FREE Workers+D1 project.
+# Never commit real secrets or automatically switch to a paid plan.
+name = "stillnote-entitlements"
+main = "src/index.mjs"
+compatibility_date = "2026-10-28"
+
+[vars]
+FIREBASE_PROJECT_ID = "REPLACE_WITH_YOUR_FIREBASE_SPARK_PROJECT_ID"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stillnote-entitlements"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
