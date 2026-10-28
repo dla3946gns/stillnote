@@ -62,6 +62,7 @@ fun StillnoteApp(
     }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
+    var showPlusPreview by rememberSaveable { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun requestAction(action: () -> Unit) {
         if (model.state.hasUnsavedChanges) pendingAction = action else {
@@ -139,7 +140,8 @@ fun StillnoteApp(
                             onCreate = { requestAction { store.createNote() } },
                             onExportBackup = onExportBackup,
                             onImportBackup = { requestAction(onImportBackup) },
-                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } }
+                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } },
+                            onOpenPlusPreview = { requestAction { showPlusPreview = true } }
                         )
                     }
                     if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -175,6 +177,9 @@ fun StillnoteApp(
     }
     if (showPrivacyPolicy) {
         PrivacyPolicyDialog(onDismiss = { showPrivacyPolicy = false })
+    }
+    if (MonetizationConfig.SHOW_PLUS_PREVIEW && showPlusPreview) {
+        StillnotePlusPreviewDialog(onDismiss = { showPlusPreview = false })
     }
     if (pendingAction != null) {
         AlertDialog(
@@ -281,7 +286,8 @@ private fun NotesList(
     onCreate: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    onOpenPrivacyPolicy: () -> Unit
+    onOpenPrivacyPolicy: () -> Unit,
+    onOpenPlusPreview: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
@@ -301,6 +307,12 @@ private fun NotesList(
                         onImportBackup()
                     }, enabled = !state.loadFailed && !state.saveFailed)
                     HorizontalDivider()
+                    if (MonetizationConfig.SHOW_PLUS_PREVIEW) {
+                        DropdownMenuItem(text = { Text("Stillnote Plus 미리보기") }, onClick = {
+                            menuOpen = false
+                            onOpenPlusPreview()
+                        })
+                    }
                     DropdownMenuItem(text = { Text("개인정보처리방침") }, onClick = {
                         menuOpen = false
                         onOpenPrivacyPolicy()
