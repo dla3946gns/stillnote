@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHandler } from "../src/index.mjs";
-import { InvalidIdToken, IdentityProviderUnavailable } from "../src/firebase-auth.mjs";
+import { createHandler } from "../dist/index.js";
+import { InvalidIdToken, IdentityProviderUnavailable } from "../dist/firebase-auth.js";
 
 const url = "https://api.example.invalid/v1/entitlement";
 const get = (auth = "Bearer signed-valid-token", method = "GET") =>

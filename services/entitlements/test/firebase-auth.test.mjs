@@ -5,7 +5,7 @@ import {
   InvalidIdToken,
   IdentityProviderUnavailable,
   verifyFirebaseIdToken
-} from "../src/firebase-auth.mjs";
+} from "../dist/firebase-auth.js";
 
 const enc = new TextEncoder();
 const projectId = "stillnote-free-test";

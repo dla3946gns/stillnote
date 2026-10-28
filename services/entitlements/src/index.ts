@@ -2,9 +2,23 @@ import {
   verifyFirebaseIdToken,
   InvalidIdToken,
   IdentityProviderUnavailable
-} from "./firebase-auth.mjs";
+} from "./firebase-auth.js";
 
-const PLUS_ENTITLEMENT = "stillnote_plus";
+const PLUS_ENTITLEMENT = "stillnote_plus" as const;
+
+export interface EntitlementEnv {
+  FIREBASE_PROJECT_ID: string;
+  DB: {
+    prepare(sql: string): {
+      bind(...values: string[]): {
+        first(): Promise<{ found: number } | null>;
+      };
+    };
+  };
+}
+export type VerifyToken = (token: string, projectId: string) => Promise<string>;
+interface HandlerOptions { verifyToken?: VerifyToken; }
+type ApiPayload = Record<string, string | boolean>;
 const HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -12,7 +26,7 @@ const HEADERS = {
   "vary": "Authorization"
 };
 
-function json(data, status = 200) {
+function json(data: ApiPayload, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: HEADERS });
 }
 
@@ -20,8 +34,8 @@ function json(data, status = 200) {
  * Test-only dependency injection; production default always uses the real
  * cryptographic Firebase token verifier. No HTTP header can bypass verification.
  */
-export function createHandler({ verifyToken = verifyFirebaseIdToken } = {}) {
-  return async function handle(request, env) {
+export function createHandler({ verifyToken = verifyFirebaseIdToken }: HandlerOptions = {}) {
+  return async function handle(request: Request, env: EntitlementEnv): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path === "/health" && request.method === "GET") {
       return json({ ok: true, service: "stillnote-entitlements" });
@@ -63,4 +77,4 @@ export function createHandler({ verifyToken = verifyFirebaseIdToken } = {}) {
 }
 
 const productionHandler = createHandler();
-export default { fetch: (request, env) => productionHandler(request, env) };
+export default { fetch: (request: Request, env: EntitlementEnv): Promise<Response> => productionHandler(request, env) };

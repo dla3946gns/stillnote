@@ -1,9 +1,17 @@
 {
   "name": "stillnote-entitlements",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "test": "npm run typecheck && npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
   }
 }

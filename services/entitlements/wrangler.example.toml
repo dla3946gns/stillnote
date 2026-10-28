@@ -1,7 +1,7 @@
 # Example only: copy to wrangler.toml locally after creating a FREE Workers+D1 project.
 # Never commit real secrets or automatically switch to a paid plan.
 name = "stillnote-entitlements"
-main = "src/index.mjs"
+main = "src/index.ts"
 compatibility_date = "2026-10-28"
 
 [vars]

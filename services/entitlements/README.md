@@ -28,6 +28,14 @@ Apple 개발자 등록비·Google/Apple 인앱 결제 수수료는 별도입니�
 - https://firebase.google.com/docs/auth/admin/verify-id-tokens
 - https://developer.apple.com/app-store/review/guidelines/
 
+## TypeScript 서버 스펙
+
+- Cloudflare Workers 진입 파일 `src/index.ts`와 인증 모듈 `src/firebase-auth.ts`를
+  TypeScript **5.8.3**의 `strict: true` 타입 검사로 관리합니다.
+- `npm ci` 및 `npm test` 실행 시 타입 검사, 컴파일, 기존 Node 보안 테스트를 순서대로 실행합니다.
+- Wrangler는 `src/index.ts`를 번들링하며, `dist/`는 테스트용 생성물입니다.
+- API 응답 및 D1 스키마는 기존과 동일합니다. TypeScript는 런타임 인증/입력 검증을 대체하지 않습니다.
+
 ## 이번 PR에 포함된 기능
 
 - `GET /health`: 배포 진단, 구매·계정 정보 노출 없음.
@@ -79,6 +87,7 @@ Apple 개발자 등록비·Google/Apple 인앱 결제 수수료는 별도입니�
 
 ```sh
 cd services/entitlements
+npm ci
 npm test
 ```
 

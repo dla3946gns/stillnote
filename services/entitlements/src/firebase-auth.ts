@@ -5,20 +5,20 @@
  * https://firebase.google.com/docs/auth/admin/verify-id-tokens
  */
 const CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
-let cachedCerts;
+let cachedCerts: Record<string, string> | undefined;
 let cacheExpiresAt = 0;
 
 export class InvalidIdToken extends Error {}
 export class IdentityProviderUnavailable extends Error {}
 
-function fromBase64Url(input) {
+function fromBase64Url(input: string): Uint8Array {
   if (!/^[A-Za-z0-9_-]+$/.test(input)) throw new InvalidIdToken("Invalid token encoding");
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
   const bytes = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
   return Uint8Array.from(bytes, c => c.charCodeAt(0));
 }
 
-function decodeJson(input) {
+function decodeJson(input: string): unknown {
   try {
     return JSON.parse(new TextDecoder().decode(fromBase64Url(input)));
   } catch {
@@ -26,7 +26,11 @@ function decodeJson(input) {
   }
 }
 
-async function getSigningCertificates(fetcher) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function getSigningCertificates(fetcher: typeof fetch): Promise<Record<string, string>> {
   const now = Date.now();
   // Cache only for the production fetcher, never across injected test sources.
   if (fetcher === fetch && cachedCerts && now < cacheExpiresAt) return cachedCerts;
@@ -34,23 +38,32 @@ async function getSigningCertificates(fetcher) {
   try {
     response = await fetcher(CERTS_URL);
     if (!response.ok) throw new Error("Signing certificates unavailable");
-    const certs = await response.json();
-    if (typeof certs !== "object" || certs === null || Array.isArray(certs)) {
+    const certs: unknown = await response.json();
+    if (!isRecord(certs) || !Object.values(certs).every(value => typeof value === "string")) {
       throw new Error("Invalid certificate data");
     }
     const cacheControl = response.headers.get("cache-control") || "";
     const maxAge = Number(/(?:^|,)\s*max-age=(\d+)/i.exec(cacheControl)?.[1] || 300);
     if (fetcher === fetch) {
-      cachedCerts = certs;
+      cachedCerts = certs as Record<string, string>;
       cacheExpiresAt = now + Math.max(60, Math.min(maxAge, 3600)) * 1000;
     }
-    return certs;
+    return certs as Record<string, string>;
   } catch {
     throw new IdentityProviderUnavailable("Unable to verify sign-in right now");
   }
 }
 
-export async function verifyFirebaseIdToken(token, projectId, { fetcher = fetch, now = () => Date.now() } = {}) {
+export interface VerifyTokenOptions {
+  fetcher?: typeof fetch;
+  now?: () => number;
+}
+
+export async function verifyFirebaseIdToken(
+  token: string,
+  projectId: string,
+  { fetcher = fetch, now = () => Date.now() }: VerifyTokenOptions = {}
+): Promise<string> {
   if (typeof projectId !== "string" || !/^[a-zA-Z0-9-]{3,100}$/.test(projectId)) {
     throw new IdentityProviderUnavailable("Firebase project is not configured");
   }
@@ -64,16 +77,16 @@ export async function verifyFirebaseIdToken(token, projectId, { fetcher = fetch,
   const header = decodeJson(headerPart);
   const claims = decodeJson(payloadPart);
 
-  if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) {
+  if (!isRecord(header) || header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) {
     throw new InvalidIdToken("Invalid token header");
   }
   const seconds = Math.floor(now() / 1000);
-  if (claims.aud !== projectId ||
+  if (!isRecord(claims) || claims.aud !== projectId ||
       claims.iss !== `https://securetoken.google.com/${projectId}` ||
       typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 128 ||
-      !Number.isSafeInteger(claims.exp) || claims.exp <= seconds ||
-      !Number.isSafeInteger(claims.iat) || claims.iat > seconds ||
-      !Number.isSafeInteger(claims.auth_time) || claims.auth_time > seconds) {
+      typeof claims.exp !== "number" || !Number.isSafeInteger(claims.exp) || claims.exp <= seconds ||
+      typeof claims.iat !== "number" || !Number.isSafeInteger(claims.iat) || claims.iat > seconds ||
+      typeof claims.auth_time !== "number" || !Number.isSafeInteger(claims.auth_time) || claims.auth_time > seconds) {
     throw new InvalidIdToken("Invalid token claims");
   }
 
@@ -102,7 +115,7 @@ export async function verifyFirebaseIdToken(token, projectId, { fetcher = fetch,
   return claims.sub;
 }
 
-function derTlv(bytes, at) {
+function derTlv(bytes: Uint8Array, at: number): { tag: number; start: number; end: number } {
   if (at >= bytes.length) throw new InvalidIdToken("Invalid certificate");
   const tag = bytes[at++];
   if (at >= bytes.length) throw new InvalidIdToken("Invalid certificate");
@@ -119,7 +132,7 @@ function derTlv(bytes, at) {
   return { tag, start: at, end: at + length };
 }
 
-function extractSubjectPublicKeyInfo(cert) {
+function extractSubjectPublicKeyInfo(cert: Uint8Array): Uint8Array {
   // Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm, signatureValue }
   // TBSCertificate ::= SEQUENCE { [0] version OPTIONAL, serialNumber,
   // signature, issuer, validity, subject, subjectPublicKeyInfo, ... }

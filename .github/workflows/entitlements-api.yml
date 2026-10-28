@@ -26,5 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run dependency-free API tests
+      - name: Install pinned TypeScript compiler
+        run: npm ci
+      - name: Typecheck, compile and run API security tests
         run: npm test
