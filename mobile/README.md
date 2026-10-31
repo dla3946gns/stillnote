@@ -1,5 +1,9 @@
 # Stillnote 모바일
 
+인증 연동의 결정·스펙·실행한 테스트와 미검증 항목은
+[인증 연동 스펙 및 기록](AUTH_INTEGRATION_SPEC.md)에 정리합니다.
+관련 결정을 바꾸거나 검증을 수행하면 결과와 근거 링크를 함께 갱신합니다.
+
 메모의 비즈니스 로직은 Kotlin Multiplatform으로 공유하고 Android 화면은 Kotlin·Jetpack Compose, iOS 화면은 Swift·SwiftUI로 구현한 첫 네이티브 앱입니다.
 
 ## 구조
