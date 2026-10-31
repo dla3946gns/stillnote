@@ -36,6 +36,16 @@ class AndroidNotesStorageTest {
     }
 
     @Test
+    fun noExistingFileReturnsEmptyNotesWithoutCreatingStoredData() = withTemporaryDirectory { directory ->
+        val file = File(directory, "stillnote-notes.json")
+        val storage = AndroidNotesStorage(directory)
+        assertEquals("[]", storage.read())
+        assertFalse(file.exists())
+        assertTrue(NotesStore(storage).state.notes.isEmpty())
+        assertFalse(file.exists())
+    }
+
+    @Test
     fun failedAtomicWritePreservesLastCommittedFile() = withTemporaryDirectory { directory ->
         val store = NotesStore(AndroidNotesStorage(directory))
         val id = requireNotNull(store.createNote())

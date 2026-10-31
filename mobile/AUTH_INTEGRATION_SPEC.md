@@ -99,9 +99,9 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 ## 실패한 네이티브 인증 검증 복구 — 2026-10-31
 
 - 대상 PR: #25, 기존 검증 https://github.com/dla3946gns/stillnote/actions/runs/41204684107.
-- iOS: macos-15의 Xcode가 Firebase Apple SDK 13.1.1의 Swift tools 6.2 요구를 충족하지 못해 `macos-26`의 Xcode 26.2로 고정했다. 그 후 실제 Swift 컴파일에서 `NotesModel.swift`의 `read() throws -> String?`가 nullable Objective-C 프로토콜 계약을 구현하지 못한다는 오류를 확인했다. Swift의 `read()`는 nonthrowing nullable로 구현하고, **파일 없음에만 nil**을 반환한다. I/O 오류 시 파일에 기록하지 않는 비정상 JSON 마커를 반환해 KMP `NotesStore`가 기존 `loadFailed` 처리로 들어가도록 해 저장된 메모 덮어쓰기를 방지한다. 이 인터롭 우회는 별도 iOS 실패 경로 회귀 테스트가 필요하다.
+- iOS: macos-15의 Xcode가 Firebase Apple SDK 13.1.1의 Swift tools 6.2 요구를 충족하지 못해 `macos-26`의 Xcode 26.2로 고정했다. 그 후 실제 Swift 컴파일에서 `NotesModel.swift`의 `read() throws -> String?`가 nullable Objective-C 프로토콜 계약을 구현하지 못한다는 오류를 확인했다. 재검증 결과 nonthrowing 구현 역시 Objective-C의 throwing 요구사항을 충족하지 못했다. **최종 해결:** KMP `NotesStorage.read(): String`을 non-null throwing 계약으로 통일하고, **파일 없음은 항상 빈 JSON 배열 `[]`**로 나타낸다. Android·iOS 저장소 및 KMP 테스트 가짜 저장소도 같은 계약을 사용한다. 실제 파일 읽기 오류는 양쪽에서 계속 예외로 전달되어 `NotesStore.loadFailed`가 기록된 메모의 무단 덮어쓰기를 막는다. 기존 JSON 백업 형식과 저장된 메모 파일은 변경하지 않는다. Android의 파일 없음 회귀 단위 테스트를 추가했고, iOS 저장소 인터롭의 실제 시뮬레이터 재컴파일이 필요하다.
 - Android: Firebase Auth 로컬 에뮬레이터 요청이 `UNAVAILABLE`을 반환했다. 원인 가설은 Android 9+의 비암호화(HTTP) 트래픽 기본 차단이며, 실제 자격 증명 없는 디버그 빌드에서만 `10.0.2.2`에 대한 cleartext 접근을 제한적으로 허용한다. **릴리스 빌드 매니페스트·네트워크 정책에는 예외를 추가하지 않는다.**
 - Android UI: 작은 화면/키보드 노출 시 검증 메시지가 보이지 않는 계측 실패를 해결하기 위해 제출 시 포커스·키보드를 해제하고, 검증 메시지가 표시되면 스크롤 끝으로 이동한다.
 - CI: 실패 시 민감한 인증 로그 대신 계측 결과/테스트 스택 위치만 요약하도록 진단 출력을 수정한다.
-- 이번 변경은 **아직 CI 재검증 결과 대기**다. 사용자가 입력한 실계정·토큰·메모를 테스트에 사용하지 않는다.
+- 2차 검증: Android 인증 계정 수명주기 및 네이티브 계정 화면 테스트 성공(https://github.com/dla3946gns/stillnote/actions/runs/41205455442). iOS 빌드는 nullable+throws 충돌로 실패해 위의 non-null 계약으로 재수정했으며 **새 CI 검증 대기**다. 사용자가 입력한 실계정·토큰·메모를 테스트에 사용하지 않는다.
 - Android 릴리스 개인정보 보호 검사의 신규 권한 3개 차단은 유지한다. 정책/Play 데이터 안전성 확정 및 별도 승인 전에는 해당 게이트를 완화하거나 출시하지 않는다.

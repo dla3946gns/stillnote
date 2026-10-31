@@ -12,8 +12,8 @@ internal class AndroidNotesStorage(directory: File) : NotesStorage {
     private val file = File(directory, "stillnote-notes.json")
     private val stagedFile = File(directory, "stillnote-notes.json.tmp")
 
-    override fun read(): String? {
-        if (!file.exists()) return null
+    override fun read(): String {
+        if (!file.exists()) return "[]"
         val decoder = Charsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT)

@@ -16,9 +16,9 @@ class NotesStoreTest {
         var failNextWrite = false
         var failRead = false
 
-        override fun read(): String? {
+        override fun read(): String {
             if (failRead) error("read unavailable")
-            return data
+            return data ?: "[]"
         }
 
         override fun write(content: String) {

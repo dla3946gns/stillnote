@@ -14,18 +14,13 @@ private final class LocalNotesStorage: NSObject, NotesStorage {
         return directory.appendingPathComponent("stillnote-notes.json")
     }
 
-    func read() -> String? {
-        // Kotlin/Native exports the nullable NotesStorage.read() as a nonthrowing
-        // Objective-C requirement. A failed read must still reach NotesStore's
-        // parse-error path so it marks loadFailed and protects existing notes
-        // against subsequent writes. A missing file is the only nil case.
-        do {
-            let url = try fileURL()
-            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return try String(contentsOf: url, encoding: .utf8)
-        } catch {
-            return "\u{0000}" // Invalid JSON sentinel: never written to disk.
-        }
+    func read() throws -> String {
+        // Kotlin/Native's Objective-C bridge cannot represent both a nullable
+        // return and a throwing method. Missing files return canonical empty
+        // notes JSON; real I/O errors still throw to prevent data overwrite.
+        let url = try fileURL()
+        guard FileManager.default.fileExists(atPath: url.path) else { return "[]" }
+        return try String(contentsOf: url, encoding: .utf8)
     }
 
     func write(content: String) throws {

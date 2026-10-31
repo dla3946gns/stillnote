@@ -280,7 +280,7 @@ class NotesStore(private val storage: NotesStorage) {
 
     private fun load() {
         try {
-            val loaded = storage.read()?.let(::parseNotes).orEmpty().distinctBy { it.id }
+            val loaded = parseNotes(storage.read()).distinctBy { it.id }
             notes = loaded
             activeId = loaded.maxByOrNull { it.updatedAt }?.id
             draft = loaded.find { it.id == activeId }
