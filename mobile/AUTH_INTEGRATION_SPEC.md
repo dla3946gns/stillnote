@@ -124,3 +124,12 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - 최종 이전 CI [41207309178](https://github.com/dla3946gns/stillnote/actions/runs/41207309178)에서 Xcode 26.6 / Swift 6.3.3에서도 `NotesView.swift` IRGen 중 `@$sSSScA_pSgIeAghgg_SSIeAghn_TR` 함수 변환(thunk)에서 Swift 컴파일러가 충돌했다. 버전 업그레이드만으로 해결되지 않았다.
 - iOS `NotesView.swift`의 `.searchable(text: Binding(get: ..., set: model.setQuery))`는 @MainActor 메서드를 nonisolated 함수 값으로 전달해 String 인자용 actor reabstraction thunk를 생성한다. `set: { query in model.setQuery(query) }`로 교체하여 메서드 참조에 대한 함수 값 변환을 피한다. 검색 결과·메모 도메인·입력·UI·사용자 데이터 동작은 변경하지 않는다.
 - 원인 가설은 컴파일러 오류와 함수 인자 종류에 근거한다. **수정 효과와 양 플랫폼 회귀 검증은 새 CI 결과 확인 전까지 미확정**이다.
+
+## PR 권한 정적 검사와 실제 출시 보호 분리 — 2026-10-31
+
+- 사용자 요청: PR #25 Android 개인정보 권한 사전 검사의 **기존 SDK 추가로 인한 오탐 실패를 먼저 해결**한다. 공개 정책이나 Play Console 신고가 완료됐다는 뜻은 아니다.
+- Android Firebase Authentication 25.0.0 / reCAPTCHA 18.6.1의 매니페스트 근거는 [권한 출처 조사](review/auth/firebase-permission-audit.md) 및 [AAR 증빙](review/auth/firebase-permission-evidence.json)에 기록돼 있다.
+- PR CI `mobile-ci.yml`의 정적 사전 검사는 정확히 `INTERNET`, `ACCESS_NETWORK_STATE`, `READ_GSERVICES`를 SDK 검토 목록에 추가한다. `releaseRuntimeClasspath`에서 **Firebase Auth와 reCAPTCHA의 고정 버전**을 모두 확인하고, 패키지의 `allowBackup=false`, `debuggable=false`, 추가 권한 거부를 계속 강제한다. 필수 SDK 권한이 예상과 달리 누락돼도 새로운 검토가 필요하므로 실패한다.
+- **정식 서명 릴리스 보호는 변경하지 않는다:** `mobile/scripts/verify-signed-release-privacy.py`의 현재 권한 차단은 그대로다. Firebase 인증을 포함한 실제 서명 AAB를 배포하기 전 개인정보처리방침, 계정 삭제 경로 및 Google Play 데이터 보안 신고 승인과 검사 규칙 갱신이 별도로 필요하다.
+- PR CI 보고서 `privacy_notice_and_store_disclosure_approved=false`는 위 미완료 상태를 명시한다. 실제 사용자 메모, Google/Firebase 계정, 결제 키는 작업에 사용하지 않는다.
+- **CI 성공 여부는 새 빌드 결과 확인 전까지 미확정**이다. Google Play 심사 중인 Android 0.1.0 `main` 브랜치에는 적용하지 않는다.
