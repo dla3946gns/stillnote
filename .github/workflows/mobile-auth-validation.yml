@@ -65,7 +65,7 @@ jobs:
           REPORT=mobile/androidApp/build/auth-emulator-qa/instrumentation.txt
           if [[ -f "$REPORT" ]]; then
             echo "Instrumentation result summary (no credentials or mail links):"
-            grep -E '^(INSTRUMENTATION_STATUS: (class|test|numtests|Error)|INSTRUMENTATION_STATUS_CODE:|FAILURES!!!|Tests run:|OK \\(|INSTRUMENTATION_RESULT: shortMsg=)' "$REPORT" | head -n 80 || true
+            grep -E '^(INSTRUMENTATION_STATUS: (class|test|numtests|stack=java[.]lang[.]AssertionError)|INSTRUMENTATION_STATUS_CODE:|FAILURES!!!|Tests run:|OK [(]|INSTRUMENTATION_RESULT: shortMsg=)|AndroidEmailAuthEmulatorTest[.]kt:[0-9]+|AccountNavigationTest[.]kt:[0-9]+' "$REPORT" | head -n 80 || true
           else
             echo "No instrumentation report was created (emulator/bootstrap may have failed)."
           fi

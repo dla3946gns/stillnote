@@ -9,6 +9,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -31,12 +33,21 @@ fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
     var visiblePassword by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     var deletionPassword by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollState = rememberScrollState()
+    // A validation message must be visible even with the keyboard or a small viewport.
+    LaunchedEffect(model.problem, model.message, scrollState.maxValue) {
+        if (model.problem != null || model.message != null) {
+            scrollState.scrollTo(scrollState.maxValue)
+        }
+    }
     fun changePage(next: AuthPage) { page = next; password = ""; model.clearMessage() }
     fun close() { password = ""; deletionPassword = ""; onClose() }
     BackHandler { if (page != AuthPage.LOGIN && model.account == null) changePage(AuthPage.LOGIN) else close() }
     LaunchedEffect(model.account?.uid) { password = ""; deletionPassword = ""; deleting = false }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, contentWindowInsets = WindowInsets.safeDrawing) { inset ->
-        Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(scrollState)
             .padding(horizontal = 26.dp, vertical = 16.dp).testTag("auth-screen")) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("StillNote", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
@@ -84,6 +95,8 @@ fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
                         if (currentPage == AuthPage.LOGIN) TextButton(onClick = { changePage(AuthPage.RESET) }, enabled = !model.busy) { Text("비밀번호를 잊었나요?") }
                         Spacer(Modifier.height(24.dp))
                         Button(onClick = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
                             when (currentPage) {
                                 AuthPage.LOGIN -> model.signIn(email, password)
                                 AuthPage.REGISTER -> model.register(email, password)
