@@ -1,0 +1,78 @@
+{
+  "tested_commit": "ab0fca28e393a726350530fa74c1de8e1b04cce0",
+  "ci_run": 41201860594,
+  "artifact_id": 13043102714,
+  "apk_type": "debug",
+  "environment": "API 35 google_apis x86_64 fresh emulator, no user credentials",
+  "uid_counters": {
+    "uid": 10209,
+    "before_positive_control_tx_bytes": 0,
+    "before_positive_control_rx_bytes": 0,
+    "after_positive_control_tx_bytes": 1218,
+    "after_positive_control_rx_bytes": 4070,
+    "positive_control_http_status": 204,
+    "scope": "Fresh test emulator UID; includes instrumentation startup before reading counters"
+  },
+  "observed_app_uid_socket_rows": 0,
+  "phase_markers_utc": [
+    "2026-10-31T12:40:44Z before_launch",
+    "2026-10-31T12:41:17Z first_launch",
+    "2026-10-31T12:42:54Z offline",
+    "2026-10-31T12:43:30Z positive_control_instrumentation",
+    "2026-10-31T12:43:33Z complete"
+  ],
+  "pcap_data_link": 1,
+  "whole_vm_packet_counts": {
+    "before_launch": 55521,
+    "first_launch": 4538,
+    "offline": 112,
+    "positive_control_instrumentation": 21
+  },
+  "whole_vm_dns_names": {
+    "before_launch": [
+      "android.apis.google.com",
+      "android.googleapis.com",
+      "connectivitycheck.gstatic.com",
+      "digitalassetlinks.googleapis.com",
+      "dl.google.com",
+      "firebaseinstallations.googleapis.com",
+      "fonts.gstatic.com",
+      "gmscompliance-pa.googleapis.com",
+      "infinitedata-pa.googleapis.com",
+      "instantmessaging-pa.googleapis.com",
+      "mobileconfiguration-pa.googleapis.com",
+      "mtalk.google.com",
+      "notifications-pa.googleapis.com",
+      "pagead2.googlesyndication.com",
+      "remoteprovisioning.googleapis.com",
+      "time.google.com",
+      "voilatile-pa.googleapis.com",
+      "www.google.com",
+      "www.googleapis.com",
+      "www.gstatic.com"
+    ],
+    "first_launch": [
+      "geller-pa.googleapis.com",
+      "play.googleapis.com",
+      "rcs-acs-tmo-us.jibe.google.com",
+      "time.android.com"
+    ],
+    "offline": [
+      "android.googleapis.com",
+      "connectivitycheck.gstatic.com",
+      "mtalk.google.com",
+      "www.google.com"
+    ],
+    "positive_control_instrumentation": [
+      "www.gstatic.com"
+    ]
+  },
+  "pcap_sha256": "7825df970de39fd1aa8943ac384c277a5ea9d8ebb407e42c984164819344a7e2",
+  "result": "No traffic attributed to app UID before explicit positive control in this bounded observation.",
+  "limits": [
+    "Whole VM PCAP is not app attribution.",
+    "TLS payload not decrypted.",
+    "Other UIDs, later activity, real devices and authentication flows are outside this observation.",
+    "UID counters also include instrumentation startup; no Firebase Auth instance or login was explicitly requested."
+  ]
+}

@@ -1,0 +1,68 @@
+name: Firebase startup network audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/firebase-startup-audit.yml'
+      - 'mobile/scripts/run-startup-network-audit.sh'
+      - 'mobile/androidApp/src/androidTest/**/StartupNetworkAuditTest.kt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-startup-audit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  startup-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install compilation SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Build APK and isolated network counter test
+        working-directory: mobile
+        run: bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          mkdir -p mobile/androidApp/build/startup-network-audit
+      - name: Observe fresh startup without user credentials
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -tcpdump /tmp/stillnote-startup.pcap
+          script: bash mobile/scripts/run-startup-network-audit.sh
+      - name: Preserve VM capture
+        if: always()
+        run: |
+          if [ -f /tmp/stillnote-startup.pcap ]; then
+            cp /tmp/stillnote-startup.pcap mobile/androidApp/build/startup-network-audit/emulator-all-traffic.pcap
+          fi
+      - name: Upload bounded observation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firebase-startup-network-audit
+          path: mobile/androidApp/build/startup-network-audit/
+          if-no-files-found: warn
+          retention-days: 7
