@@ -16,6 +16,7 @@ struct NotesView: View {
     @State private var fileError: String?
     @State private var pendingAction: PendingAction?
     @State private var confirmingUnsavedChanges = false
+    @State private var showingAccount = false
 
     private enum PendingAction {
         case select(String?)
@@ -26,6 +27,7 @@ struct NotesView: View {
         case undoDelete
         case beginImport
         case importBackup(String)
+        case openAccount
     }
 
     var body: some View {
@@ -69,6 +71,7 @@ struct NotesView: View {
             }
         }
         .foregroundStyle(Theme.ink)
+        .sheet(isPresented: $showingAccount) { AuthView().tint(Theme.cocoa) }
         .safeAreaInset(edge: .bottom, spacing: 0) { statusPanel }
         .onChange(of: model.activeID) { _, id in
             compactColumn = id == nil ? .sidebar : .detail
@@ -149,6 +152,7 @@ struct NotesView: View {
         case .undoDelete: model.undoDelete()
         case .beginImport: importing = true
         case .importBackup(let content): model.importBackup(content)
+        case .openAccount: showingAccount = true
         }
     }
 
@@ -227,6 +231,7 @@ struct NotesView: View {
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
+                    Button("계정", systemImage: "person.crop.circle") { request(.openAccount) }
                     Button("백업 내보내기", systemImage: "square.and.arrow.up") {
                         backup = BackupDocument(content: model.exportBackup())
                         exportContentType = .json
@@ -242,7 +247,7 @@ struct NotesView: View {
                     }
                     .disabled(model.state.loadFailed || model.state.saveFailed)
                 } label: {
-                    Label("백업", systemImage: "ellipsis")
+                    Label("더보기", systemImage: "ellipsis")
                 }
                 Button("새 메모", systemImage: "square.and.pencil") { request(.create) }
                     .disabled(model.state.loadFailed)

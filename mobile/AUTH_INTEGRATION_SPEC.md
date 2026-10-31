@@ -12,7 +12,9 @@
 - Google 서비스 플러그인 4.5.0, Firebase BoM 35.1.0, Auth 25.0.0 및 reCAPTCHA 18.6.1 포함.
 - 기존 메모는 기기 내 저장. 자동 업로드·동기화·Cloudflare 배포·구매 연동은 이번 작업 범위 밖.
 - 로그인하지 않아도 기존 메모 사용을 보존하는 방향. SDK 자동 처리까지 선택 수집이라고 단정하지 않는다.
-- 로그인 UI는 아직 앱에 구현하지 않았다. 실제 변경 전 대상 파일·영향 범위 승인 규칙을 따른다.
+- 로그인 UI 구현을 진행 중이며 아직 검증·출시 완료 상태가 아니다. 실제 변경 전 대상 파일·영향 범위 승인 규칙을 따른다.
+- 사용자 승인(2026-10-31): Android MainActivity/StillnoteApp 및 신규 AuthScreen/AuthViewModel에서 더보기→계정, 로그인·가입·재설정·계정 상태·로그아웃·재인증 후 삭제를 구현한다. 같은 범위를 iOS에도 적용한다.
+- 앞으로 모바일 기능은 Android/iOS를 함께 구현한다. 공통 도메인·검증은 KMP, Android UI는 Compose, iOS UI는 SwiftUI, Firebase SDK 호출은 각각의 얇은 네이티브 어댑터로 분리한다. 특정 타사 앱과 내부 스택이 같거나 성능이 보장된다고 주장하지 않는다.
 - 공개 정책·Play 신고는 검토 초안만 준비. 실제 게시·제출·CI 허용 목록 변경은 미수행.
 
 ## 화면·도구 결정
@@ -65,6 +67,18 @@
 첫 실행 실제 통신 관찰 → 정책 초안 보완 → 검토한 권한 기준 변경 → CI 재실행.
 로그인 UI/계정 삭제·외부 요청 경로 구현과 실기기 인증 검증은 별도 후속 범위다.
 PR은 초안이며 병합·Play 업로드·출시하지 않았다.
+
+## 양 플랫폼 인증 구현 — 진행 중
+
+- Android: MainActivity/StillnoteApp의 더보기→계정 진입, AuthScreen/AuthViewModel과 AndroidEmailAuth 추가. 기존 미저장 메모 확인을 통과한 뒤 진입하고 닫기·뒤로가기로 복귀한다.
+- iOS: NotesView의 더보기→계정, AuthView/AuthModel 및 AppleEmailAuth 추가. 기존 미저장 메모 확인과 로컬 저장을 유지한다. Firebase Apple SDK 13.1.1을 Swift Package Manager로 고정한다.
+- Firebase Apple 앱 등록 완료: 번들 com.stillnotes.app, 닉네임 Stillnote iOS, 앱 ID 1:218352371308:ios:cd042dca3de0094b68ba49. 구성 파일의 프로젝트·번들·앱 ID를 확인했다. App Store ID·팀 ID·배포 서명은 추가하지 않았다.
+- KMP: AuthAccount/AuthProblem과 EmailAuthInput 입력 규칙. 비밀번호를 trim하거나 현재 신규가입 정책으로 기존 로그인 비밀번호를 차단하지 않는다. 비밀번호 보안 정책 최종 판정은 Firebase가 담당한다.
+- 가입 완료와 이메일 확인 메일 발송 실패를 구분한다. 가입 성공 후 메일만 실패했을 때 계정 생성 실패로 안내하지 않는다. 재설정 응답은 계정 존재 여부를 드러내지 않는 문구를 사용한다.
+- 계정 삭제는 현재 비밀번호로 재인증하고 동일 UID인지 확인한 뒤 실행한다. 기기 메모·백업·Plus 이용권을 삭제·변경하거나 권한을 부여하지 않는다.
+- 비밀번호는 화면의 일시적 상태로만 취급하고 제출·화면 전환·닫기 시 지운다. 로그나 저장 파일·saved state에 남기지 않는다.
+- 검증 계획: KMP 입력 규칙 테스트, Android 로컬 Auth emulator 가상 계정 수명주기와 메모 보존·화면 탐색 테스트, macOS에서 SwiftUI/Firebase/KMP 시뮬레이터 컴파일. 아직 결과 대기.
+- 외부 계정 삭제 요청 페이지, 실제 메일 수신·실서비스 인증, 양 플랫폼 개인정보 고지·스토어 신고 확정은 미완료. 라이브 공개 정책이나 가상의 삭제 URL을 추가하지 않는다. 현 단계는 개발 PR이며 출시 보류.
 
 ## 첫 실행 관찰 결과 — 2026-10-31
 

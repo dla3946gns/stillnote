@@ -1,0 +1,97 @@
+name: Native authentication validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mobile-auth-validation.yml'
+      - 'mobile/androidApp/src/**'
+      - 'mobile/shared/src/**'
+      - 'mobile/iosApp/**'
+      - 'mobile/scripts/run-auth-emulator-tests.sh'
+      - 'mobile/test-emulators/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-auth-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  android-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Auth emulator CLI
+        run: npm install --global firebase-tools@15.34.2
+      - name: Install compilation SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Build and test shared rules
+        working-directory: mobile
+        run: bash ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise local account lifecycle and native screen
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          script: cd mobile && firebase emulators:exec --only auth --project demo-stillnote-auth --config test-emulators/firebase.json 'bash scripts/run-auth-emulator-tests.sh' > /tmp/stillnote-local-auth.log 2>&1
+      - name: Upload test results without emulator credentials or OOB links
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-auth-android-results
+          path: |
+            mobile/shared/build/test-results/testAndroidHostTest/
+            mobile/androidApp/build/test-results/testDebugUnitTest/
+            mobile/androidApp/build/auth-emulator-qa/
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile SwiftUI, Firebase Auth, and KMP for simulator
+        run: |
+          set -euo pipefail
+          chmod +x mobile/gradlew
+          xcodebuild -version
+          xcodebuild -project mobile/iosApp/Stillnote.xcodeproj -scheme Stillnote \
+            -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath work/ios-auth-derived ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build \
+            > work-ios-auth-build.log 2>&1 || { tail -n 100 work-ios-auth-build.log; exit 1; }
+      - name: Upload simulator compile log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-auth-ios-build-log
+          path: work-ios-auth-build.log
+          if-no-files-found: warn
+          retention-days: 14
