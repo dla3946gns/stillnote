@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5efe3">
+  <meta name="robots" content="noindex">
+  <title>Stillnote 계정 | 로그인 · 회원가입 · 회원 탈퇴</title>
+  <style>
+    :root {color-scheme:light; --cream:#f5efe3;--paper:#fffcf6;--ink:#352b25;--muted:#756557;--line:#e5dacd;--accent:#795540;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:var(--cream);color:var(--ink);padding:28px 16px 60px}
+    a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:4px}
+    button,input{font:inherit} button{cursor:pointer} button:disabled{opacity:.5;cursor:wait}
+    main{max-width:530px;margin:0 auto}header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 26px}
+    .brand{font-size:20px;font-weight:750;letter-spacing:-.045em} .back{font-size:13px}
+    .card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 12px 40px #392c2211}
+    h1{font-size:27px;margin:0 0 12px;letter-spacing:-.045em}h2{font-size:20px;margin:0 0 15px}
+    .intro{font-size:14px;color:var(--muted);line-height:1.7;margin:0 0 22px}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+    .tabs button{border:1px solid var(--line);border-radius:9px;background:transparent;padding:9px 12px;color:var(--muted);font-size:13px}
+    .tabs button[aria-pressed=true]{background:#ebd8c5;color:var(--ink);border-color:#d9c1aa}
+    label.field{display:grid;gap:7px;font-size:13px;font-weight:620;margin:0 0 16px}
+    input[type=email],input[type=password]{min-height:46px;border:1px solid #d7c8b8;border-radius:10px;padding:12px;background:white;max-width:100%;width:100%;color:var(--ink)}
+    input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #ad8564;outline-offset:3px}
+    .primary,.secondary{width:100%;min-height:46px;border-radius:11px;font-size:14px;font-weight:700;margin:4px 0 8px}
+    .primary{border:0;background:var(--accent);color:white}.secondary{border:1px solid var(--line);background:transparent;color:var(--ink)}
+    .danger{background:#8c3c34} .note{font-size:13px;color:var(--muted);line-height:1.75}
+    #accountStatus{padding:12px;border-radius:10px;background:#f3ebdf;font-size:13px;line-height:1.6;margin:0 0 18px}
+    #accountStatus[data-error=true]{background:#fae9e7;color:#8b352f}
+    .email{font-weight:700;overflow-wrap:anywhere}.delete{border-top:1px solid var(--line);margin-top:18px;padding-top:18px}
+    .check{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.5;margin-bottom:16px}
+    .check input{margin-top:4px} [hidden]{display:none!important}
+    footer{font-size:12px;color:var(--muted);line-height:1.7;margin:22px 4px}
+    @media(max-width:460px){.card{padding:22px 18px}h1{font-size:25px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><span class="brand">Stillnote</span><a class="back" href="../">돌아가기</a></header>
+  <section class="card">
+    <h1>Stillnote 계정</h1>
+    <p class="intro">Android·iOS·웹은 같은 Firebase 계정을 사용할 수 있어요. 계정을 만들더라도 메모는 각 기기나 브라우저에 저장되고 자동 동기화되지 않아요.</p>
+    <p id="accountStatus" role="status" aria-live="polite">계정 기능을 준비하고 있어요.</p>
+    <div id="loginPanel" hidden>
+      <nav class="tabs" aria-label="계정 메뉴">
+        <button type="button" id="switchLogin" aria-pressed="true">로그인</button>
+        <button type="button" id="switchRegister" aria-pressed="false">회원가입</button>
+        <button type="button" id="switchReset" aria-pressed="false">비밀번호 재설정</button>
+      </nav>
+      <h2 id="accountTitle">로그인</h2>
+      <form id="loginForm">
+        <label class="field">이메일
+          <input id="accountEmailInput" type="email" autocomplete="email" inputmode="email" required maxlength="254">
+        </label>
+        <label class="field" id="passwordRow">비밀번호
+          <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="primary" id="loginSubmit" type="submit">로그인</button>
+      </form>
+      <p class="note">로그인하지 않아도 메모 작성·검색·백업은 이용할 수 있어요.</p>
+    </div>
+    <div id="userPanel" hidden>
+      <h2>나의 계정</h2>
+      <p class="email" id="userEmail"></p>
+      <p class="note">이 계정은 로컬 메모를 Firebase로 업로드하거나 다른 기기에 동기화하지 않아요.</p>
+      <button class="secondary" id="verificationButton" type="button">이메일 확인 메일 다시 보내기</button>
+      <button class="secondary" id="signOutButton" type="button">로그아웃</button>
+      <div class="delete">
+        <button class="secondary" id="deleteToggle" type="button">계정 삭제(회원 탈퇴)</button>
+        <form id="deleteForm" hidden>
+          <h2>계정을 삭제할까요?</h2>
+          <p class="note">Firebase 인증 계정이 삭제됩니다. 이 브라우저·기기의 메모와 별도로 내보낸 백업은 삭제되지 않아요. 삭제 후 되돌릴 수 없어요.</p>
+          <label class="field">현재 비밀번호로 본인 확인
+            <input id="deletePassword" type="password" autocomplete="current-password" required>
+          </label>
+          <label class="check">
+            <input id="deletionConsent" type="checkbox" required>
+            <span>Firebase 계정 삭제와 로컬 메모가 유지되는 점을 이해했어요.</span>
+          </label>
+          <button class="primary danger" type="submit">계정 영구 삭제</button>
+        </form>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>운영: Anna Johnny Works · 문의: <a href="mailto:dla3946gns@gmail.com">dla3946gns@gmail.com</a></p>
+    <p>본 페이지는 후속 인증 버전의 개발안입니다. 공개 전 실제 개인정보처리방침과 삭제 절차를 확정합니다. 비밀번호를 문의 메일로 보내지 마세요.</p>
+  </footer>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
