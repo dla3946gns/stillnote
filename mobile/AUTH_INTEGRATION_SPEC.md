@@ -118,3 +118,9 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - [최신 인증 CI 41206631020](https://github.com/dla3946gns/stillnote/actions/runs/41206631020): Android 로컬 Firebase 인증·계정 화면과 공유 테스트 **성공**. iOS Swift 6 동시성 타입 오류를 수정한 뒤, `NotesView.swift`의 컴파일러 생성 함수에 대한 IR 생성에서 **Apple Swift 6.2.3 swift-frontend가 내부 오류/스택 덤프로 중단**됐다. 일반 소스 타입 오류는 해당 로그에 보고되지 않았다.
 - Firebase iOS SDK 13.1.1이 요구하는 최소 Xcode 26.2는 유지하되, CI의 Xcode를 26.6으로 교체해 더 최신 Swift 컴파일러에서 같은 SwiftUI·Firebase·KMP 코드를 재검증한다. 동시성 타입 검사를 비활성화하거나 메모/구매 로직을 우회하지 않는다.
 - 실제 결과는 후속 CI에서 검증할 것이며, **컴파일러 버전 변경만으로 빌드 성공을 미리 단정하지 않는다.** Android 개인정보 릴리스 권한 3개에 대한 별도 정책 검토 차단은 유지한다.
+
+## iOS Swift 6.3 IRGen 리어브스트랙션 thunk 수정 시도 — 2026-10-31
+
+- 최종 이전 CI [41207309178](https://github.com/dla3946gns/stillnote/actions/runs/41207309178)에서 Xcode 26.6 / Swift 6.3.3에서도 `NotesView.swift` IRGen 중 `@$sSSScA_pSgIeAghgg_SSIeAghn_TR` 함수 변환(thunk)에서 Swift 컴파일러가 충돌했다. 버전 업그레이드만으로 해결되지 않았다.
+- iOS `NotesView.swift`의 `.searchable(text: Binding(get: ..., set: model.setQuery))`는 @MainActor 메서드를 nonisolated 함수 값으로 전달해 String 인자용 actor reabstraction thunk를 생성한다. `set: { query in model.setQuery(query) }`로 교체하여 메서드 참조에 대한 함수 값 변환을 피한다. 검색 결과·메모 도메인·입력·UI·사용자 데이터 동작은 변경하지 않는다.
+- 원인 가설은 컴파일러 오류와 함수 인자 종류에 근거한다. **수정 효과와 양 플랫폼 회귀 검증은 새 CI 결과 확인 전까지 미확정**이다.

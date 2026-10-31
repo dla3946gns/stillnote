@@ -219,7 +219,7 @@ struct NotesView: View {
                 }
             }
         }
-        .searchable(text: Binding(get: { model.state.query }, set: model.setQuery), prompt: "메모 검색")
+        .searchable(text: Binding(get: { model.state.query }, set: { query in model.setQuery(query) }), prompt: "메모 검색")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
