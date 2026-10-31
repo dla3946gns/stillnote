@@ -133,3 +133,19 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - **정식 서명 릴리스 보호는 변경하지 않는다:** `mobile/scripts/verify-signed-release-privacy.py`의 현재 권한 차단은 그대로다. Firebase 인증을 포함한 실제 서명 AAB를 배포하기 전 개인정보처리방침, 계정 삭제 경로 및 Google Play 데이터 보안 신고 승인과 검사 규칙 갱신이 별도로 필요하다.
 - PR CI 보고서 `privacy_notice_and_store_disclosure_approved=false`는 위 미완료 상태를 명시한다. 실제 사용자 메모, Google/Firebase 계정, 결제 키는 작업에 사용하지 않는다.
 - **CI 성공 여부는 새 빌드 결과 확인 전까지 미확정**이다. Google Play 심사 중인 Android 0.1.0 `main` 브랜치에는 적용하지 않는다.
+
+## Android 0.1.0 심사와 분리한 인증 개인정보 고지 초안 — 2026-11-01
+
+- 사용자가 **검토 1단계(초안 작성만)** 진행을 승인함. Google Play에 심사 중인 Android 0.1.0의 main 코드/앱 내부 정책/공개 GitHub Pages/Play Console 신고는 변경하지 않는다.
+- PR #25의 실제 AndroidEmailAuth/AuthViewModel·AppleEmailAuth/AuthModel, Android Compose·iOS SwiftUI 화면과 Firebase Auth 의존성을 기준으로 인증 데이터 흐름을 갱신함. 이메일·비밀번호 인증, UID·세션, Firebase IP/user agent, Android reCAPTCHA 조건부 데이터 처리와 사용자 메모의 기기 내 보관을 구분한다.
+- 문서 검토안 5종을 커밋 be723e97f5b4c6d2ae2d931d00a06ff1c839f48f에 추가/수정:
+  1. review/auth/stillnote-auth-data-flow-review.md — 실제 코드/SDK 데이터 흐름, 재인증·삭제 범위와 미확인 항목.
+  2. review/auth/stillnote-privacy-policy-auth-draft.md — Android·iOS 인증 후속 버전 통합 개인정보처리방침 (미승인/미게시).
+  3. review/auth/stillnote-play-data-safety-auth-draft.md — 다음 Android 릴리스용 Play Data safety 신고안 (미제출).
+  4. review/auth/account-deletion-request-draft.md — 앱 내 Firebase 사용자 삭제 경로와 외부 웹 삭제 요청 요건 (웹 미구현).
+  5. review/auth/stillnote-app-store-app-privacy-draft.md — 향후 iOS App Store Connect 개인정보 신고 검토안 (미제출).
+- 정책 작성 기준은 Google Play 데이터 보안/계정 삭제 요구사항, Firebase Android SDK·reCAPTCHA 공개, Apple App Privacy 및 계정 삭제 요구사항. SDK 포함만으로 모든 데이터가 언제나 전송된다고 단정하지 않고, 일부 기술 정보는 로그인 선택 여부와 별개로 처리될 수 있음을 명시한다.
+- **출시 전 남은 게이트:** 실제 최종 AAB/iOS 빌드 SDK·통신 검증, reCAPTCHA 동작/데이터 유형 확정, Firebase 보관·국외 이전 및 운영자 문의 정보 보유기간·법적 고지 확정, 웹 삭제 요청과 본인확인 구현, 앱·웹·스토어 신고 일치 및 최종 운영자 승인.
+- 특히 앱 내 Firebase 사용자 삭제는 로컬 메모·별도 백업을 지우지 않으며, 현재 웹 계정 삭제 URL은 존재하지 않는다. 향후 Cloudflare/Plus 연동 시 계정 연계 서버 데이터의 삭제도 추가 구현한다.
+- **범위 검증:** PR #25 브랜치의 현재 앱 정책 mobile/androidApp/src/main/assets/privacy-policy-ko.txt 및 웹 docs/privacy/index.html은 기존 Android 0.1.0 내용을 유지한다. 정책 파일, CI 권한 규칙, 앱 코드와 Play Console 설정은 이 단계에서 변경하지 않음.
+- 문서 작업은 새 실기기·실계정 테스트가 아니다. 문서 변경을 Firebase 인증·삭제 기능 또는 Play 신고 검증 완료로 표시하지 않는다.
