@@ -1,0 +1,42 @@
+name: Stillnote web authentication and account deletion checks
+
+on:
+  push:
+    branches: [codex/stillnote-web-auth-delete]
+    paths:
+      - 'dist/**'
+      - 'docs/account/**'
+      - 'docs/delete-account/**'
+      - 'web/tests/**'
+      - '.github/workflows/web-auth-validation.yml'
+  pull_request:
+    paths:
+      - 'dist/**'
+      - 'docs/account/**'
+      - 'docs/delete-account/**'
+      - 'web/tests/**'
+      - '.github/workflows/web-auth-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  web-auth:
+    name: Check account UI and safe staging configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check JavaScript syntax
+        run: |
+          node --check dist/account/app.js
+          node --check docs/account/app.js
+          node --check dist/account/rules.js
+          node --check docs/account/rules.js
+      - name: Run authentication input and messaging tests
+        run: node --test web/tests/account-rules.test.mjs
+      - name: Verify staged pages and local memo preservation contract
+        run: python3 web/tests/verify-account-pages.py
