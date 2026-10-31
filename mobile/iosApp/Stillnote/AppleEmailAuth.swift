@@ -39,12 +39,22 @@ final class AppleEmailAuth {
 
     func sendVerification() async throws {
         guard let user = auth.currentUser else { throw localError(4) }
-        try await user.sendEmailVerification()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.sendEmailVerification { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            }
+        }
     }
 
     func refreshAccount() async throws {
         guard let user = auth.currentUser else { throw localError(4) }
-        try await user.reload()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.reload { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            }
+        }
     }
 
     func signOut() throws { try auth.signOut() }
@@ -53,9 +63,19 @@ final class AppleEmailAuth {
         guard let user = auth.currentUser, let email = user.email else { throw localError(4) }
         try validate(email: email, password: password)
         let credential = EmailAuthProvider.credential(withEmail: email, password: password)
-        _ = try await user.reauthenticate(with: credential)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.reauthenticate(with: credential) { _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            }
+        }
         guard auth.currentUser?.uid == user.uid else { throw localError(3) }
-        try await user.delete()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.delete { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            }
+        }
     }
 
     private func validate(email: String, password: String, passwordRequired: Bool = true) throws {

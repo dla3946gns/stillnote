@@ -105,3 +105,10 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - CI: 실패 시 민감한 인증 로그 대신 계측 결과/테스트 스택 위치만 요약하도록 진단 출력을 수정한다.
 - 2차 검증: Android 인증 계정 수명주기 및 네이티브 계정 화면 테스트 성공(https://github.com/dla3946gns/stillnote/actions/runs/41205455442). iOS 빌드는 nullable+throws 충돌로 실패해 위의 non-null 계약으로 재수정했으며 **새 CI 검증 대기**다. 사용자가 입력한 실계정·토큰·메모를 테스트에 사용하지 않는다.
 - Android 릴리스 개인정보 보호 검사의 신규 권한 3개 차단은 유지한다. 정책/Play 데이터 안전성 확정 및 별도 승인 전에는 해당 게이트를 완화하거나 출시하지 않는다.
+
+## Swift 6 엄격 동시성 오류 후속 검증 — 2026-10-31
+
+- CI https://github.com/dla3946gns/stillnote/actions/runs/41206065356에서 Android 인증 에뮬레이터 테스트는 재통과했으며, iOS는 기존 저장소 브리지 오류를 넘어 **Swift 6 동시성 오류** 6건으로 멈췄다.
+- Firebase `User`는 Sendable로 입증되지 않은 SDK 참조이므로 `await user.sendEmailVerification/reload/reauthenticate/delete`로 비격리 async API에 전달하지 않는다. 같은 @MainActor에서 콜백형 Firebase SDK 메서드를 직접 호출하고 `CheckedContinuation<Void, Error>`로 완료 결과만 전달하여 기존 에러·삭제 전 재인증 검사를 유지한다. continuation에서 사용자 객체·비밀번호·토큰을 출력하거나 저장하지 않는다.
+- KMP `NotesObserver`의 동기 콜백은 기존 문서상 UI 스레드 전용이다. iOS `StoreObserver`를 `@MainActor`, `@preconcurrency NotesObserver`로 선언하고 메인 스레드에서만 `NotesState`를 직접 UI 모델로 전달한다. 다른 스레드에서 호출되면 사전조건이 실패하여 데이터 경합을 방치하지 않는다.
+- 이 변경에 대한 **iOS 실제 컴파일/런타임 검증은 새 CI 결과 대기**. 프로덕션 Firebase 계정이나 Play 배포는 사용하지 않았다.

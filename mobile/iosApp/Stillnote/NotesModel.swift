@@ -28,16 +28,21 @@ private final class LocalNotesStorage: NSObject, NotesStorage {
     }
 }
 
-private final class StoreObserver: NSObject, NotesObserver {
-    private let onChange: @MainActor (NotesState) -> Void
+// NotesStore invokes all observers on the UI thread by contract. Mark the
+// Objective-C protocol conformance as preconcurrency while maintaining
+// MainActor isolation for the non-Sendable Kotlin NotesState instance.
+@MainActor
+private final class StoreObserver: NSObject, @preconcurrency NotesObserver {
+    private let onChange: (NotesState) -> Void
 
-    init(onChange: @escaping @MainActor (NotesState) -> Void) {
+    init(onChange: @escaping (NotesState) -> Void) {
         self.onChange = onChange
         super.init()
     }
 
     func onChanged(state: NotesState) {
-        MainActor.assumeIsolated { onChange(state) }
+        precondition(Thread.isMainThread, "NotesStore observers must execute on the UI thread")
+        onChange(state)
     }
 }
 
