@@ -42,7 +42,8 @@ fun StillnoteApp(
     onShare: (String) -> Unit,
     onExportText: (String) -> Unit,
     onExportBackup: () -> Unit,
-    onImportBackup: () -> Unit
+    onImportBackup: () -> Unit,
+    onOpenAccount: () -> Unit
 ) {
     val state = model.state
     val store = model.store
@@ -139,7 +140,8 @@ fun StillnoteApp(
                             onCreate = { requestAction { store.createNote() } },
                             onExportBackup = onExportBackup,
                             onImportBackup = { requestAction(onImportBackup) },
-                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } }
+                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } },
+                            onOpenAccount = { requestAction(onOpenAccount) }
                         )
                     }
                     if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -281,7 +283,8 @@ private fun NotesList(
     onCreate: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    onOpenPrivacyPolicy: () -> Unit
+    onOpenPrivacyPolicy: () -> Unit,
+    onOpenAccount: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
@@ -292,6 +295,10 @@ private fun NotesList(
             Box {
                 TextButton(onClick = { menuOpen = true }) { Text("더보기") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("계정") }, onClick = {
+                        menuOpen = false
+                        onOpenAccount()
+                    })
                     DropdownMenuItem(text = { Text("전체 메모 백업") }, onClick = {
                         menuOpen = false
                         onExportBackup()

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: allow local Firebase Auth emulator traffic without enabling
+     cleartext HTTP for production builds or unrelated internet hosts. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/debug_network_security_config" />
+</manifest>

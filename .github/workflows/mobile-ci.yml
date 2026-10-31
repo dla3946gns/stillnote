@@ -92,10 +92,30 @@ jobs:
           mkdir -p "$OUT"
           bash ./gradlew :androidApp:dependencies --configuration releaseRuntimeClasspath --console=plain > "$OUT/release-runtime-dependencies.txt"
           python3 - <<'PY'
-          import hashlib, json, os, shutil
+          import hashlib, json, os, re, shutil
           from pathlib import Path
           import xml.etree.ElementTree as ET
           out = Path("androidApp/build/release-privacy-preflight")
+          # Reviewed SDK versions and their precise manifest-permission footprint.
+          # A future dependency version change must trigger a fresh security review.
+          reviewed_sdk_versions = {
+              "com.google.firebase:firebase-auth": "25.0.0",
+              "com.google.android.recaptcha:recaptcha": "18.6.1",
+          }
+          deps = (out / "release-runtime-dependencies.txt").read_text(encoding="utf-8")
+          for artifact, version in reviewed_sdk_versions.items():
+              matching = (line for line in deps.splitlines() if artifact in line)
+              if not any(re.search(r"(?<![0-9.])" + re.escape(version) + r"(?![0-9.])", line)
+                         for line in matching):
+                  raise SystemExit(f"Firebase SDK version changed or missing; review required: {artifact} == {version}")
+          reviewed_permissions = {
+              "android.permission.INTERNET",
+              "android.permission.ACCESS_NETWORK_STATE",
+              "com.google.android.providers.gsf.permission.READ_GSERVICES",
+          }
+          allowed_permissions = reviewed_permissions | {
+              "com.stillnotes.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+          }
           manifest_dirs = {"merged_manifest", "merged_manifests", "packaged_manifests"}
           paths = sorted(p for p in Path("androidApp/build/intermediates").rglob("AndroidManifest.xml")
                          if "release" in p.parts and manifest_dirs.intersection(p.parts))
@@ -119,14 +139,23 @@ jobs:
                   raise SystemExit(f"Release backup flag needs privacy review: {p}")
               if app.get(android + "debuggable", "false") != "false":
                   raise SystemExit(f"Release unexpectedly debuggable: {p}")
-              unexpected = [x for x in permissions if x != "com.stillnotes.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"]
-              if unexpected:
-                  raise SystemExit(f"New release permissions need Data safety review: {unexpected}")
+              observed = set(permissions)
+              unexpected = sorted(observed - allowed_permissions)
+              missing = sorted(reviewed_permissions - observed)
+              if unexpected or missing:
+                  raise SystemExit(
+                      f"Release permissions differ from pinned SDK review: unexpected={unexpected}, missing={missing}"
+                  )
           report = {"git_sha": os.environ.get("GITHUB_SHA"), "variant": "release",
                     "manifests": records,
-                    "limits": ["Static manifest and dependency evidence, not a network-traffic audit.",
+                    "reviewed_sdk_versions": reviewed_sdk_versions,
+                    "static_permission_match": True,
+                    "privacy_notice_and_store_disclosure_approved": False,
+                    "limits": ["Static SDK/manifest check only; NOT Google Play Data safety approval.",
+                               "Existing public privacy policy does not describe Firebase login yet.",
+                               "Signed-release privacy verifier remains blocked for these new permissions.",
                                "CI smoke key is disposable; its AAB is deleted and must not be uploaded to Play.",
-                               "Recheck the actual owner-signed AAB before review or release."]}
+                               "Recheck the owner-signed AAB and update disclosures before release."]}
           (out / "release-privacy-summary.json").write_text(json.dumps(report, indent=2) + "\n")
           (out / "README.txt").write_text(
               "Release-variant privacy preflight only. No production signing keys included.\n"

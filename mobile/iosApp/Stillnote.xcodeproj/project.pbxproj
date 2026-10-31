@@ -12,6 +12,12 @@
 		100000000000000000000004 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* Theme.swift */; };
 		100000000000000000000005 /* BackupDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* BackupDocument.swift */; };
 		100000000000000000000006 /* LimitedTitleField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* LimitedTitleField.swift */; };
+		100000000000000000000007 /* AppleEmailAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008; };
+		100000000000000000000008 /* AuthModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009; };
+		100000000000000000000009 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A; };
+		10000000000000000000000A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B; };
+		10000000000000000000000B /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A00000000000000000000002; };
+		10000000000000000000000C /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A00000000000000000000003; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,10 +28,14 @@
 		200000000000000000000005 /* BackupDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupDocument.swift; sourceTree = "<group>"; };
 		200000000000000000000006 /* Stillnote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stillnote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000007 /* LimitedTitleField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimitedTitleField.swift; sourceTree = "<group>"; };
+		200000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleEmailAuth.swift; sourceTree = "<group>"; };
+		200000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModel.swift; sourceTree = "<group>"; };
+		20000000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		20000000000000000000000B = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		300000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		300000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000B, 10000000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -43,6 +53,10 @@
 				200000000000000000000004 /* Theme.swift */,
 				200000000000000000000005 /* BackupDocument.swift */,
 				200000000000000000000007 /* LimitedTitleField.swift */,
+				200000000000000000000008,
+				200000000000000000000009,
+				20000000000000000000000A,
+				20000000000000000000000B,
 			);
 			path = Stillnote;
 			sourceTree = "<group>";
@@ -68,6 +82,7 @@
 			buildRules = ();
 			dependencies = ();
 			name = Stillnote;
+			packageProductDependencies = (A00000000000000000000002, A00000000000000000000003);
 			productName = Stillnote;
 			productReference = 200000000000000000000006 /* Stillnote.app */;
 			productType = "com.apple.product-type.application";
@@ -91,12 +106,13 @@
 			productRefGroup = 400000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (A00000000000000000000001);
 			targets = (500000000000000000000001 /* Stillnote */);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		700000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		700000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000A); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -125,6 +141,9 @@
 				100000000000000000000004 /* Theme.swift in Sources */,
 				100000000000000000000005 /* BackupDocument.swift in Sources */,
 				100000000000000000000006 /* LimitedTitleField.swift in Sources */,
+				100000000000000000000007,
+				100000000000000000000008,
+				100000000000000000000009,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,6 +241,15 @@
 		900000000000000000000001 /* Build configuration list for PBXProject "Stillnote" */ = {isa = XCConfigurationList; buildConfigurations = (800000000000000000000001 /* Debug */, 800000000000000000000002 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		900000000000000000000002 /* Build configuration list for PBXNativeTarget "Stillnote" */ = {isa = XCConfigurationList; buildConfigurations = (800000000000000000000003 /* Debug */, 800000000000000000000004 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A00000000000000000000001 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git"; requirement = {kind = exactVersion; version = 13.1.1; }; };
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A00000000000000000000002 = {isa = XCSwiftPackageProductDependency; package = A00000000000000000000001; productName = FirebaseAuth; };
+		A00000000000000000000003 = {isa = XCSwiftPackageProductDependency; package = A00000000000000000000001; productName = FirebaseCore; };
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 600000000000000000000001 /* Project object */;
 }

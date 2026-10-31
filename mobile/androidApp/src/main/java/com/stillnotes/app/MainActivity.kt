@@ -12,6 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
@@ -28,6 +32,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AndroidNotesApp(model: NotesViewModel = viewModel()) {
+    var showAccount by rememberSaveable { mutableStateOf(false) }
+    if (showAccount) {
+        AuthScreen(onClose = { showAccount = false })
+        return
+    }
     val context = LocalContext.current
     fun writeDocument(uri: Uri?) {
         val content = model.pendingDocument
@@ -84,7 +93,8 @@ private fun AndroidNotesApp(model: NotesViewModel = viewModel()) {
             model.pendingDocument = model.store.exportBackup()
             backupExport.launch("memo-backup-${fileTimestamp()}.json")
         },
-        onImportBackup = { backupImport.launch(arrayOf("application/json", "text/json", "text/plain")) }
+        onImportBackup = { backupImport.launch(arrayOf("application/json", "text/json", "text/plain")) },
+        onOpenAccount = { showAccount = true }
     )
 }
 

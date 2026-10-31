@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "218352371308",
+    "project_id": "stilenote",
+    "storage_bucket": "stilenote.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218352371308:android:d5f827782a4c797c68ba49",
+        "android_client_info": {
+          "package_name": "com.stillnotes.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_0Ooo7AwKMe0WDbtUiYBUm_lZMrFVxbk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

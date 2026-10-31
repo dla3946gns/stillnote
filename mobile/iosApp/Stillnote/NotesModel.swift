@@ -14,9 +14,12 @@ private final class LocalNotesStorage: NSObject, NotesStorage {
         return directory.appendingPathComponent("stillnote-notes.json")
     }
 
-    func read() throws -> String? {
+    func read() throws -> String {
+        // Kotlin/Native's Objective-C bridge cannot represent both a nullable
+        // return and a throwing method. Missing files return canonical empty
+        // notes JSON; real I/O errors still throw to prevent data overwrite.
         let url = try fileURL()
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path) else { return "[]" }
         return try String(contentsOf: url, encoding: .utf8)
     }
 
@@ -25,16 +28,21 @@ private final class LocalNotesStorage: NSObject, NotesStorage {
     }
 }
 
-private final class StoreObserver: NSObject, NotesObserver {
-    private let onChange: @MainActor (NotesState) -> Void
+// NotesStore invokes all observers on the UI thread by contract. Mark the
+// Objective-C protocol conformance as preconcurrency while maintaining
+// MainActor isolation for the non-Sendable Kotlin NotesState instance.
+@MainActor
+private final class StoreObserver: NSObject, @preconcurrency NotesObserver {
+    private let onChange: (NotesState) -> Void
 
-    init(onChange: @escaping @MainActor (NotesState) -> Void) {
+    init(onChange: @escaping (NotesState) -> Void) {
         self.onChange = onChange
         super.init()
     }
 
     func onChanged(state: NotesState) {
-        MainActor.assumeIsolated { onChange(state) }
+        precondition(Thread.isMainThread, "NotesStore observers must execute on the UI thread")
+        onChange(state)
     }
 }
 
