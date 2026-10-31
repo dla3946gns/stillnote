@@ -54,6 +54,31 @@ AGP의 최신 버전과 별개로 KMP 문서의 명시된 호환 범위인 9.3.1
 
 ## Android 실행
 
+### Firebase Authentication SDK 연결
+
+Android 앱은 Firebase 프로젝트 `stilenote`의 `com.stillnotes.app`에 연결합니다.
+구성 파일 위치는 `androidApp/google-services.json`이며 Google 서비스 플러그인이
+빌드 시 앱 ID·API 키 리소스를 생성합니다. Firebase BoM `35.1.0`과
+Google 서비스 Gradle 플러그인 `4.5.0`을 사용하고, Auth 기본 모듈만 추가합니다.
+Analytics·Firestore·Storage는 추가하지 않습니다.
+
+이 단계는 SDK 연결이며 로그인·회원가입 화면, 인증 요청, 메모 동기화는
+아직 구현하지 않았습니다. 기존 기기 내 메모 저장은 유지합니다.
+Firebase 구성 파일은 클라이언트용 식별 정보이며 서비스 계정 개인 키가 아닙니다.
+서비스 계정 파일·서명 키·비밀번호를 이 파일 대신 넣지 마세요.
+
+설정 및 APK 빌드 확인:
+
+```powershell
+./gradlew.bat :androidApp:processDebugGoogleServices :androidApp:assembleDebug
+```
+
+**릴리스 전 검토 필요:** Auth SDK의 병합 매니페스트에는 네트워크 관련 권한이
+추가될 수 있습니다. 기존 CI와 서명 릴리스의 개인정보 사전 검사는 오프라인 앱의
+권한 기준을 유지하므로 이를 승인 없이 완화하지 않습니다. 실제 병합 매니페스트와
+의존성, 개인정보처리방침 및 Play 데이터 보안 신고를 검토한 후 별도 변경해야 합니다.
+SDK 추가만으로 로그인 성공·이메일 발송·보안 또는 출시 검증이 완료된 것은 아닙니다.
+
 1. Android Studio에서 이 `mobile` 폴더를 엽니다.
 2. Gradle JDK는 JDK 17로 설정합니다.
 3. SDK Manager에서 Android SDK Platform 37.0, Build Tools 36.0.0, Platform Tools를 설치합니다.
