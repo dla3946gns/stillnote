@@ -57,6 +57,22 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: cd mobile && firebase emulators:exec --only auth --project demo-stillnote-auth --config test-emulators/firebase.json 'bash scripts/run-auth-emulator-tests.sh' > /tmp/stillnote-local-auth.log 2>&1
+      - name: Summarize failed emulator test safely
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPORT=mobile/androidApp/build/auth-emulator-qa/instrumentation.txt
+          if [[ -f "$REPORT" ]]; then
+            echo "Instrumentation result summary (no credentials or mail links):"
+            grep -E '^(INSTRUMENTATION_STATUS: (class|test|numtests|Error)|INSTRUMENTATION_STATUS_CODE:|FAILURES!!!|Tests run:|OK \\(|INSTRUMENTATION_RESULT: shortMsg=)' "$REPORT" | head -n 80 || true
+          else
+            echo "No instrumentation report was created (emulator/bootstrap may have failed)."
+          fi
+          if [[ -f /tmp/stillnote-local-auth.log ]]; then
+            echo "Firebase local emulator status:"
+            grep -E '(Error:|Error while|Could not start|emulator.*(failed|error)|Failed to|ECONNREFUSED)' /tmp/stillnote-local-auth.log | head -n 35 || true
+          fi
       - name: Upload test results without emulator credentials or OOB links
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,7 +86,7 @@ jobs:
           retention-days: 14
 
   ios-build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +94,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Pin Xcode 26.2 for Firebase Apple SDK 13
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          xcodebuild -version
       - name: Compile SwiftUI, Firebase Auth, and KMP for simulator
         run: |
           set -euo pipefail
