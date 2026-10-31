@@ -94,10 +94,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Pin Xcode 26.2 for Firebase Apple SDK 13
+      - name: Pin Xcode 26.6 to avoid Swift 6.2.3 compiler IRGen crash
         run: |
           set -euo pipefail
-          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
       - name: Compile SwiftUI, Firebase Auth, and KMP for simulator
         run: |

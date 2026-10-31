@@ -112,3 +112,9 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - Firebase `User`는 Sendable로 입증되지 않은 SDK 참조이므로 `await user.sendEmailVerification/reload/reauthenticate/delete`로 비격리 async API에 전달하지 않는다. 같은 @MainActor에서 콜백형 Firebase SDK 메서드를 직접 호출하고 `CheckedContinuation<Void, Error>`로 완료 결과만 전달하여 기존 에러·삭제 전 재인증 검사를 유지한다. continuation에서 사용자 객체·비밀번호·토큰을 출력하거나 저장하지 않는다.
 - KMP `NotesObserver`의 동기 콜백은 기존 문서상 UI 스레드 전용이다. iOS `StoreObserver`를 `@MainActor`, `@preconcurrency NotesObserver`로 선언하고 메인 스레드에서만 `NotesState`를 직접 UI 모델로 전달한다. 다른 스레드에서 호출되면 사전조건이 실패하여 데이터 경합을 방치하지 않는다.
 - 이 변경에 대한 **iOS 실제 컴파일/런타임 검증은 새 CI 결과 대기**. 프로덕션 Firebase 계정이나 Play 배포는 사용하지 않았다.
+
+## iOS Xcode 26.2 Swift IRGen 컴파일러 충돌 후속 — 2026-10-31
+
+- [최신 인증 CI 41206631020](https://github.com/dla3946gns/stillnote/actions/runs/41206631020): Android 로컬 Firebase 인증·계정 화면과 공유 테스트 **성공**. iOS Swift 6 동시성 타입 오류를 수정한 뒤, `NotesView.swift`의 컴파일러 생성 함수에 대한 IR 생성에서 **Apple Swift 6.2.3 swift-frontend가 내부 오류/스택 덤프로 중단**됐다. 일반 소스 타입 오류는 해당 로그에 보고되지 않았다.
+- Firebase iOS SDK 13.1.1이 요구하는 최소 Xcode 26.2는 유지하되, CI의 Xcode를 26.6으로 교체해 더 최신 Swift 컴파일러에서 같은 SwiftUI·Firebase·KMP 코드를 재검증한다. 동시성 타입 검사를 비활성화하거나 메모/구매 로직을 우회하지 않는다.
+- 실제 결과는 후속 CI에서 검증할 것이며, **컴파일러 버전 변경만으로 빌드 성공을 미리 단정하지 않는다.** Android 개인정보 릴리스 권한 3개에 대한 별도 정책 검토 차단은 유지한다.
