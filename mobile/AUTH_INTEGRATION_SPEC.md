@@ -149,3 +149,15 @@ PR은 초안이며 병합·Play 업로드·출시하지 않았다.
 - 특히 앱 내 Firebase 사용자 삭제는 로컬 메모·별도 백업을 지우지 않으며, 현재 웹 계정 삭제 URL은 존재하지 않는다. 향후 Cloudflare/Plus 연동 시 계정 연계 서버 데이터의 삭제도 추가 구현한다.
 - **범위 검증:** PR #25 브랜치의 현재 앱 정책 mobile/androidApp/src/main/assets/privacy-policy-ko.txt 및 웹 docs/privacy/index.html은 기존 Android 0.1.0 내용을 유지한다. 정책 파일, CI 권한 규칙, 앱 코드와 Play Console 설정은 이 단계에서 변경하지 않음.
 - 문서 작업은 새 실기기·실계정 테스트가 아니다. 문서 변경을 Firebase 인증·삭제 기능 또는 Play 신고 검증 완료로 표시하지 않는다.
+
+## 웹 계정 및 외부 삭제 요청 구현 기록 — 2026-11-01
+
+- 사용자 명시 요청: Stillnote 모바일웹 로그인·회원가입·회원탈퇴 + Google Play 외부 회원 탈퇴 진입 웹페이지. 개발 브랜치 codex/stillnote-web-auth-delete는 PR #25 기반이며 main/Android 0.1.0 심사 버전을 변경하지 않는다.
+- dist/index.html: 기존 브라우저 메모 앱에 계정 링크만 추가. 기존 메모 저장 키 simple-notes-v1, 로컬 데이터·백업 및 셰이더 disableTelemetry는 변경 없음.
+- dist/account 및 docs/account: 모바일 반응형 HTML/CSS, JS Firebase Web SDK 13.1.0으로 이메일 가입/로그인/재설정, 확인 이메일, 로그아웃, 현재 비밀번호 재인증 후 동일 UID에 대해 deleteUser.
+- docs/delete-account: 외부 계정 삭제 요청에 필요한 안내·진입 링크를 구현. 별도 웹 로그인 후 회원탈퇴 가능. 등록 이메일 접근 불가의 운영자 본인확인·처리 경로는 추가 준비 필요.
+- **설정 미완료:** Firebase 프로젝트 stilenote에 Web 앱 별도 등록이 필요. Web App ID/API 키/authorized domains 확인 전 양 config.js는 null로 유지. 이 상태에서 실제 Firebase 인증은 실행 불가(설정 미완료 메시지).
+- iOS/Android는 동일 Firebase 프로젝트의 계정 사용. 브라우저 origin이 다른 경우 로그인이 자동 전달되지 않으며, 계정 연결만 공유. 메모 자동 동기화/자동 업로드/Plus 서버 연동 없음.
+- 현재 공개 개인정보처리방침, Play Console 데이터 보안 신고, 운영 Firebase 프로젝트, 출시 서명키·배포 설정은 건드리지 않음.
+- 테스트: 정적 웹 화면/설정/입력 테스트를 웹 인증 CI로 수행. 실서비스 API 가입·삭제/실기기 크로스 플랫폼 검증은 Web 앱 등록 후 시행. 결과는 실행 CI 링크와 함께 별도 보고.
+- 이 기능이 공개되기 전 정확한 국외 처리·삭제/보존·계정 보호 고지, Google Play 계정 삭제 URL, Apple App Privacy 및 운영자 승인 필수.

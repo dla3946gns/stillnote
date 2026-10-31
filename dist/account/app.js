@@ -40,8 +40,8 @@ function setBusy(value) {
   loginSubmit.textContent = value ? "확인 중…" : ({login:"로그인",register:"계정 만들기",reset:"재설정 메일 요청"})[mode];
 }
 
-function selectMode(next) {
-  if (busy) return;
+function selectMode(next, force = false) {
+  if (busy && !force) return;
   mode = next;
   password.value = "";
   deletePassword.value = "";
@@ -131,7 +131,7 @@ loginForm.addEventListener("submit", event => {
 });
 signOutButton.addEventListener("click", () => execute(async () => {
   await sdk.signOut(auth);
-  selectMode("login");
+  selectMode("login", true);
   report("로그아웃했어요. 이 브라우저의 메모는 남아 있어요.");
 }));
 verificationButton.addEventListener("click", () => execute(async () => {
@@ -151,7 +151,7 @@ deleteForm.addEventListener("submit", event => {
     await sdk.reauthenticateWithCredential(user, sdk.EmailAuthProvider.credential(user.email, typedPassword));
     if (!auth.currentUser || auth.currentUser.uid !== uid) throw { code: "stillnote/session-changed" };
     await sdk.deleteUser(user);
-    selectMode("login");
+    selectMode("login", true);
     report("Stillnote 계정을 삭제했어요. 이 브라우저의 메모와 별도 백업은 삭제하지 않았어요.");
   });
 });
