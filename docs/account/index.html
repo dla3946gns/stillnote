@@ -49,13 +49,20 @@
       </nav>
       <h2 id="accountTitle">로그인</h2>
       <form id="loginForm">
-        <label class="field">이메일
-          <input id="accountEmailInput" type="email" autocomplete="email" inputmode="email" required maxlength="254">
-        </label>
-        <label class="field" id="passwordRow">비밀번호
-          <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
-        </label>
-        <button class="primary" id="loginSubmit" type="submit">로그인</button>
+        <div id="registrationAgeGate" hidden>
+          <p class="note">Stillnote 계정은 만 18세 이상만 만들 수 있어요. 계정 없이도 이 기기·브라우저의 메모 기능은 이용할 수 있어요.</p>
+          <label class="check"><input id="registrationAgeConfirmed" type="checkbox"><span>만 18세 이상입니다.</span></label>
+          <p class="note">현재 만 18세 미만은 계정을 만들 수 없어요. 개인정보처리방침은 공개 전 확정 예정입니다.</p>
+        </div>
+        <fieldset id="accountCredentialFields" style="border:0;padding:0;margin:0;min-width:0">
+          <label class="field">이메일
+            <input id="accountEmailInput" type="email" autocomplete="email" inputmode="email" required maxlength="254">
+          </label>
+          <label class="field" id="passwordRow">비밀번호
+            <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
+          </label>
+          <button class="primary" id="loginSubmit" type="submit">로그인</button>
+        </fieldset>
       </form>
       <p class="note">로그인하지 않아도 메모 작성·검색·백업은 이용할 수 있어요.</p>
     </div>

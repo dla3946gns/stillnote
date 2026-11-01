@@ -37,6 +37,6 @@ jobs:
           node --check dist/account/rules.js
           node --check docs/account/rules.js
       - name: Run authentication input and messaging tests
-        run: node --test web/tests/account-rules.test.mjs
+        run: node --experimental-vm-modules --test web/tests/*.test.mjs
       - name: Verify staged pages and local memo preservation contract
         run: python3 web/tests/verify-account-pages.py

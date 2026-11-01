@@ -31,7 +31,8 @@ inspector.feed(page)
 required_ids = {"loginPanel", "userPanel", "loginForm", "accountEmailInput",
     "accountPasswordInput", "accountStatus", "deleteForm", "deletePassword",
     "deletionConsent", "switchLogin", "switchRegister", "switchReset",
-    "signOutButton", "deleteToggle", "userEmail"}
+    "signOutButton", "deleteToggle", "userEmail", "registrationAgeGate",
+    "registrationAgeConfirmed", "accountCredentialFields"}
 assert required_ids <= inspector.ids, "Missing account UI controls: " + str(required_ids - inspector.ids)
 assert 'src="./app.js"' in page and 'type="password"' in page
 assert "회원가입" in page and "계정 영구 삭제" in page

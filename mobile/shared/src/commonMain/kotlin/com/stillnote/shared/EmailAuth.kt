@@ -5,12 +5,17 @@ data class AuthAccount(val uid: String, val email: String?, val emailVerified: B
 enum class AuthProblem {
     INVALID_EMAIL, MISSING_PASSWORD, INVALID_CREDENTIALS, NETWORK,
     TOO_MANY_REQUESTS, WEAK_PASSWORD, EMAIL_IN_USE, RECENT_LOGIN_REQUIRED,
-    SIGNED_OUT, SESSION_CHANGED, UNAVAILABLE
+    SIGNED_OUT, SESSION_CHANGED, UNAVAILABLE, AGE_CONFIRMATION_REQUIRED
 }
 
 /** Shared input rules; Firebase remains the authority for password policy and credentials. */
 object EmailAuthInput {
     fun normalizedEmail(email: String): String = email.trim()
+
+    fun validateRegistration(email: String, password: String, ageConfirmed: Boolean): AuthProblem? {
+        if (!ageConfirmed) return AuthProblem.AGE_CONFIRMATION_REQUIRED
+        return validate(email, password)
+    }
 
     fun validate(email: String, password: String, passwordRequired: Boolean = true): AuthProblem? {
         val address = normalizedEmail(email)

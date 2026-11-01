@@ -40,6 +40,8 @@
 
 ## 테스트
 
+만 18세 이상 가입 자기신고를 추가했다. 회원가입 모드에서 확인 전에는 입력란을 숨기고 비활성화하며, 미확인 제출은 SDK 가입 전에 거부한다. 확인은 저장하지 않고 모드 전환·계정 상태 변경·pagehide에 초기화한다. 실제 나이 인증이나 Firebase REST 직접 가입 차단이 아니다. 생년월일·카드·보호자 정보는 수집하지 않는다. 공개 정책 링크는 승인된 문안·URL 준비 후 연결해야 하며 기존 공개 정책은 변경하지 않았다.
+
 2026-11-01 Console 확인: Spark 무료 유지. 웹 앱 등록 시 Hosting 설정 미선택. 이메일/비밀번호 제공업체 활성화 상태를 유지했다. Authorized domains는 `localhost`, `stilenote.firebaseapp.com`, `stilenote.web.app`이며 추가 변경하지 않았다. 향후 Pages 공개 호스트 `dla3946gns.github.io`는 공개 승인 후 별도 확인·등록한다.
 
 로컬 Chrome 390×844 모바일 뷰에서 Firebase Web SDK 13.1.0 초기화와 로그인 화면 표시, 존재하지 않는 테스트 주소의 로그인 거부 및 비밀번호 필드 초기화를 확인했다. 이어서 별도 테스트 계정 가입·로그아웃·재로그인 및 확인/재설정 이메일 수신을 직접 확인했다. 비밀번호 변경 성공 화면을 확인했으며, 사용자가 새 비밀번호 로그인과 현재 비밀번호 재인증 후 웹 회원 탈퇴를 수행했다고 보고했다. 이후 Firebase Console의 사용자 목록이 비어 있음을 확인했다. 테스트 비밀번호·메일 인증 링크·토큰은 기록하지 않는다. Android/iOS/Web 설정의 프로젝트 ID와 프로젝트 번호 일치는 자동 검사하며, 세 플랫폼의 실기기 동일 UID 로그인과 실제 저장 메모의 바이트 보존은 이번 웹 실계정 테스트에서 직접 검증하지 않았다.
@@ -47,6 +49,6 @@
 일반 Android UI CI가 Auth 에뮬레이터 서버 없이 전용 생명주기 테스트를 실행하여 `UNAVAILABLE`로 실패한 원인을 확인했다. 일반 light/dark UI 실행에서는 해당 테스트 클래스만 제외하고, Auth 서버를 시작하는 기존 전용 인증 CI에서 계속 실행한다. UI 실행 스크립트 변경 시 전용 인증 CI도 실행하도록 경로 조건을 추가했다. 앱 코드와 출시 설정은 변경하지 않았다. 수정 후 CI 결과는 PR의 최신 커밋 검사에서 확인한다.
 
 - node --check dist/account/app.js
-- node --test web/tests/account-rules.test.mjs
+- node --experimental-vm-modules --test web/tests/*.test.mjs
 - python3 web/tests/verify-account-pages.py
 - CI: .github/workflows/web-auth-validation.yml

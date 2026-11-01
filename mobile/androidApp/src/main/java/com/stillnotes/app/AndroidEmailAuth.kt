@@ -28,8 +28,8 @@ class AndroidEmailAuth(private val auth: FirebaseAuth = FirebaseAuth.getInstance
             .addOnCompleteListener { completed(if (it.isSuccessful) null else failure(it.exception)) }
     }
 
-    fun register(email: String, password: String, completed: (AuthProblem?) -> Unit) {
-        EmailAuthInput.validate(email, password)?.let { completed(it); return }
+    fun register(email: String, password: String, ageConfirmed: Boolean, completed: (AuthProblem?) -> Unit) {
+        EmailAuthInput.validateRegistration(email, password, ageConfirmed)?.let { completed(it); return }
         auth.createUserWithEmailAndPassword(EmailAuthInput.normalizedEmail(email), password)
             .addOnCompleteListener { completed(if (it.isSuccessful) null else failure(it.exception)) }
     }

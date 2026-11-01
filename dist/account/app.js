@@ -5,6 +5,9 @@ const element = id => document.getElementById(id);
 const loginPanel = element("loginPanel");
 const userPanel = element("userPanel");
 const loginForm = element("loginForm");
+const registrationAgeGate = element("registrationAgeGate");
+const registrationAgeConfirmed = element("registrationAgeConfirmed");
+const accountCredentialFields = element("accountCredentialFields");
 const deleteForm = element("deleteForm");
 const email = element("accountEmailInput");
 const password = element("accountPasswordInput");
@@ -36,13 +39,23 @@ function report(message, isError = false) {
 
 function setBusy(value) {
   busy = value;
+  registrationAgeConfirmed.disabled = value;
   for (const button of allButtons) button.disabled = value;
   loginSubmit.textContent = value ? "확인 중…" : ({login:"로그인",register:"계정 만들기",reset:"재설정 메일 요청"})[mode];
+}
+
+function syncRegistrationGate() {
+  registrationAgeGate.hidden = mode !== "register";
+  const blocked = mode === "register" && !registrationAgeConfirmed.checked;
+  accountCredentialFields.hidden = blocked;
+  accountCredentialFields.disabled = blocked;
 }
 
 function selectMode(next, force = false) {
   if (busy && !force) return;
   mode = next;
+  registrationAgeConfirmed.checked = false;
+  syncRegistrationGate();
   password.value = "";
   deletePassword.value = "";
   deletionConsent.checked = false;
@@ -61,6 +74,8 @@ function selectMode(next, force = false) {
 }
 
 function renderUser(user) {
+  registrationAgeConfirmed.checked = false;
+  syncRegistrationGate();
   if (user) {
     loginPanel.hidden = true;
     userPanel.hidden = false;
@@ -94,6 +109,17 @@ async function execute(action) {
 switchLogin.addEventListener("click", () => selectMode("login"));
 switchRegister.addEventListener("click", () => selectMode("register"));
 switchReset.addEventListener("click", () => selectMode("reset"));
+registrationAgeConfirmed.addEventListener("change", () => {
+  password.value = "";
+  syncRegistrationGate();
+  report("계정은 메모를 자동으로 동기화하지 않습니다.");
+});
+window.addEventListener("pagehide", () => {
+  registrationAgeConfirmed.checked = false;
+  password.value = "";
+  deletePassword.value = "";
+  syncRegistrationGate();
+});
 deleteToggle.addEventListener("click", () => {
   if (busy) return;
   deleteForm.hidden = !deleteForm.hidden;
@@ -104,7 +130,7 @@ loginForm.addEventListener("submit", event => {
   event.preventDefault();
   const typedEmail = normalizedEmail(email.value);
   const typedPassword = password.value;
-  const problem = validateInput(typedEmail, typedPassword, mode);
+  const problem = validateInput(typedEmail, typedPassword, mode, registrationAgeConfirmed.checked);
   if (problem) return report(problem, true);
   execute(async () => {
     if (mode === "login") {

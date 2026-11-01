@@ -24,8 +24,10 @@ final class AppleEmailAuth {
         _ = try await auth.signIn(withEmail: EmailAuthInput.shared.normalizedEmail(email: email), password: password)
     }
 
-    func register(email: String, password: String) async throws {
-        try validate(email: email, password: password)
+    func register(email: String, password: String, ageConfirmed: Bool) async throws {
+        if let problem = EmailAuthInput.shared.validateRegistration(email: email, password: password, ageConfirmed: ageConfirmed) {
+            throw localError(problem == .ageConfirmationRequired ? 5 : problem == .invalidEmail ? 1 : 2)
+        }
         _ = try await auth.createUser(withEmail: EmailAuthInput.shared.normalizedEmail(email: email), password: password)
     }
 
@@ -93,6 +95,7 @@ final class AppleEmailAuth {
             case 1: return .invalidEmail
             case 2: return .missingPassword
             case 3: return .sessionChanged
+            case 5: return .ageConfirmationRequired
             default: return .signedOut
             }
         }

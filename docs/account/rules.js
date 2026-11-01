@@ -1,7 +1,8 @@
 // Shared client-side presentation rules. Firebase is the authority on credentials.
 export const normalizedEmail = value => value.trim();
 
-export function validateInput(email, password, mode) {
+export function validateInput(email, password, mode, ageConfirmed = false) {
+  if (mode === "register" && ageConfirmed !== true) return "계정을 만들려면 만 18세 이상임을 확인해 주세요.";
   const candidate = normalizedEmail(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate)) return "이메일 주소를 확인해 주세요.";
   if (mode !== "reset" && !password) return "비밀번호를 입력해 주세요.";

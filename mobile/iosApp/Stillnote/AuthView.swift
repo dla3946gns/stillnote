@@ -7,6 +7,7 @@ struct AuthView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = AuthModel()
     @State private var page = Page.login
+    @State private var ageConfirmed = false
     @State private var email = ""
     @State private var password = ""
     @State private var revealPassword = false
@@ -41,36 +42,47 @@ struct AuthView: View {
                         Button("로그아웃", action: model.signOut).buttonStyle(.bordered)
                         Button("계정 삭제", role: .destructive) { deletionPassword = ""; deleting = true }
                     } else {
-                        Text(page == .reset ? "가입한 이메일로 재설정 링크를 보내드려요." : "StillNote 계정의 이메일을 입력해 주세요.")
-                            .font(.subheadline).foregroundStyle(Theme.muted)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("이메일").font(.caption).foregroundStyle(Theme.muted)
-                            TextField("name@example.com", text: $email)
-                                .keyboardType(.emailAddress).textContentType(.emailAddress)
-                                .textInputAutocapitalization(.never).autocorrectionDisabled()
-                                .accessibilityIdentifier("auth-email")
-                        }.padding(14).background(Theme.ivory, in: RoundedRectangle(cornerRadius: 14))
-                        if page != .reset {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("비밀번호").font(.caption).foregroundStyle(Theme.muted)
-                                HStack {
-                                    Group {
-                                        if revealPassword { TextField("비밀번호를 입력해 주세요", text: $password) }
-                                        else { SecureField("비밀번호를 입력해 주세요", text: $password) }
-                                    }.textContentType(page == .register ? .newPassword : .password)
-                                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                                        .accessibilityIdentifier("auth-password")
-                                    Button(revealPassword ? "숨기기" : "보기") { revealPassword.toggle() }.font(.caption)
-                                }
-                            }.padding(14).background(Theme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                        if page == .register {
+                            Text("Stillnote 계정은 만 18세 이상만 만들 수 있어요. 계정 없이도 이 기기·브라우저의 메모 기능은 이용할 수 있어요.")
+                                .font(.subheadline)
+                            Toggle("만 18세 이상입니다.", isOn: $ageConfirmed)
+                                .accessibilityIdentifier("auth-age-confirmation")
+                                .onChange(of: ageConfirmed) { _, _ in password = ""; model.clearMessage() }
+                            Text("현재 만 18세 미만은 계정을 만들 수 없어요. 개인정보처리방침은 공개 전 확정 예정입니다.")
+                                .font(.caption).foregroundStyle(Theme.muted)
                         }
-                        if page == .login { Button("비밀번호를 잊었나요?") { changePage(.reset) }.font(.subheadline) }
-                        Button(action: submit) {
-                            Text(model.busy ? "확인 중…" : page == .login ? "로그인" : page == .register ? "계정 만들기" : "재설정 링크 받기")
-                                .frame(maxWidth: .infinity).frame(minHeight: 44)
-                        }.buttonStyle(.borderedProminent)
-                            .disabled(email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (page != .reset && password.isEmpty))
-                            .accessibilityIdentifier("auth-submit")
+                        if page != .register || ageConfirmed {
+                            Text(page == .reset ? "가입한 이메일로 재설정 링크를 보내드려요." : "StillNote 계정의 이메일을 입력해 주세요.")
+                                .font(.subheadline).foregroundStyle(Theme.muted)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("이메일").font(.caption).foregroundStyle(Theme.muted)
+                                TextField("name@example.com", text: $email)
+                                    .keyboardType(.emailAddress).textContentType(.emailAddress)
+                                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                    .accessibilityIdentifier("auth-email")
+                            }.padding(14).background(Theme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                            if page != .reset {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("비밀번호").font(.caption).foregroundStyle(Theme.muted)
+                                    HStack {
+                                        Group {
+                                            if revealPassword { TextField("비밀번호를 입력해 주세요", text: $password) }
+                                            else { SecureField("비밀번호를 입력해 주세요", text: $password) }
+                                        }.textContentType(page == .register ? .newPassword : .password)
+                                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                            .accessibilityIdentifier("auth-password")
+                                        Button(revealPassword ? "숨기기" : "보기") { revealPassword.toggle() }.font(.caption)
+                                    }
+                                }.padding(14).background(Theme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                            }
+                            if page == .login { Button("비밀번호를 잊었나요?") { changePage(.reset) }.font(.subheadline) }
+                            Button(action: submit) {
+                                Text(model.busy ? "확인 중…" : page == .login ? "로그인" : page == .register ? "계정 만들기" : "재설정 링크 받기")
+                                    .frame(maxWidth: .infinity).frame(minHeight: 44)
+                            }.buttonStyle(.borderedProminent)
+                                .disabled(email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (page != .reset && password.isEmpty))
+                                .accessibilityIdentifier("auth-submit")
+                        }
                         Button(page == .login ? "처음 오셨나요? 회원가입" : "로그인으로 돌아가기") {
                             changePage(page == .login ? .register : .login)
                         }.frame(maxWidth: .infinity)
@@ -100,15 +112,16 @@ struct AuthView: View {
             } message: {
                 Text("현재 비밀번호로 본인을 확인한 뒤 계정을 삭제해요. 기기 메모와 별도 백업은 삭제하지 않아요.")
             }
-            .onDisappear { password = ""; deletionPassword = "" }
+            .onDisappear { ageConfirmed = false; password = ""; deletionPassword = "" }
+            .onChange(of: model.account?.uid) { _, _ in ageConfirmed = false }
         }
     }
 
-    private func changePage(_ next: Page) { page = next; password = ""; model.clearMessage() }
+    private func changePage(_ next: Page) { page = next; ageConfirmed = false; password = ""; model.clearMessage() }
     private func submit() {
         switch page {
         case .login: model.signIn(email: email, password: password)
-        case .register: model.register(email: email, password: password)
+        case .register: model.register(email: email, password: password, ageConfirmed: ageConfirmed)
         case .reset: model.resetPassword(email: email)
         }
         password = ""
@@ -118,6 +131,7 @@ struct AuthView: View {
         switch problem {
         case .invalidEmail: return "이메일 주소를 확인해 주세요."
         case .missingPassword: return "비밀번호를 입력해 주세요."
+        case .ageConfirmationRequired: return "계정을 만들려면 만 18세 이상임을 확인해 주세요."
         case .invalidCredentials: return "이메일과 비밀번호를 다시 확인해 주세요."
         case .network: return "연결을 확인하고 다시 시도해 주세요."
         case .tooManyRequests: return "요청이 많아요. 잠시 후 다시 시도해 주세요."
