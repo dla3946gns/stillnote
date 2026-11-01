@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Static parity and staging-only safety checks for Stillnote web auth pages."""
+"""Static parity, Firebase project, and memo preservation checks for web auth."""
 from html.parser import HTMLParser
 from pathlib import Path
+import json
+import plistlib
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 DIST = ROOT / "dist/account"
@@ -45,11 +48,19 @@ assert "sdk.deleteUser(user)" in sdk
 assert "auth.currentUser.uid !== uid" in sdk
 assert "password.value = \"\"" in sdk and "deletePassword.value = \"\"" in sdk
 assert "console.log" not in sdk and "localStorage" not in sdk
-assert "firebaseConfig = null" in (DIST / "config.js").read_text(encoding="utf-8"), (
-    "Enable Firebase web app credentials only after security and privacy review"
-)
+config = (DIST / "config.js").read_text(encoding="utf-8")
+fields = dict(re.findall(r'^  (\w+): "([^"]+)"', config, re.MULTILINE))
+assert set(fields) == {"apiKey", "authDomain", "projectId", "appId"}
+assert re.fullmatch(r"AIza[\w-]{35}", fields["apiKey"]), "Invalid public Firebase API key"
+assert fields["authDomain"] == "stilenote.firebaseapp.com"
+assert fields["projectId"] == "stilenote"
+assert fields["appId"] == "1:218352371308:web:eb4af67b7577182268ba49"
+android = json.loads((ROOT / "mobile/androidApp/google-services.json").read_text(encoding="utf-8"))
+ios = plistlib.loads((ROOT / "mobile/iosApp/Stillnote/GoogleService-Info.plist").read_bytes())
+assert android["project_info"]["project_id"] == ios["PROJECT_ID"] == fields["projectId"]
+assert android["project_info"]["project_number"] == ios["GCM_SENDER_ID"] == "218352371308"
 delete = (ROOT / "docs/delete-account/index.html").read_text(encoding="utf-8")
 assert '../account/?mode=delete' in delete
 assert "Stillnote 계정 삭제 요청" in delete
 assert "비밀번호·메모·백업 파일은 보내지 마세요" in delete
-print("Stillnote web auth static parity, privacy staging, and deletion access checks passed.")
+print("Stillnote web auth parity, shared Firebase project, memo preservation, and deletion access checks passed.")

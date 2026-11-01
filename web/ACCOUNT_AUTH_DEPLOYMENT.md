@@ -1,6 +1,6 @@
 # Stillnote 웹 계정(회원가입·로그인·회원 탈퇴) 개발 안내
 
-상태: **정적 웹 계정 화면과 Firebase Web SDK 연동 코드는 작성했으나, Firebase Web 앱 등록과 실서비스 검증이 남아 있다. 공개·배포하지 않았다.** 기존 Android 0.1.0 Google Play 심사에 영향을 주지 않는다.
+상태: **2026-11-01 Firebase Web 앱 등록과 설정 연결 완료. 실제 사용자 생명주기 전체 검증은 남아 있으며 공개·배포하지 않았다.** 기존 Android 0.1.0 Google Play 심사 버전은 변경하지 않는다.
 
 ## 구성 및 URL
 
@@ -14,7 +14,7 @@
 
 1. Firebase Console → 기존 프로젝트 stilenote → 프로젝트 설정 → 앱 추가 → **웹 앱** 등록. Android/iOS와 동일 Firebase Authentication 사용자 풀을 사용한다.
 2. 등록 결과의 **apiKey, authDomain, projectId, appId**를 확인한다. 이 정보는 웹 앱의 공개 식별 설정이며 Admin SDK 비밀 키나 사용자의 비밀번호와 다르다.
-3. docs/account/config.js 및 dist/account/config.js의 firebaseConfig=null을 **같은 Web 앱 설정값**으로 교체한다. 지금은 설정이 null이어서 SDK가 실제로 초기화되지 않고 웹페이지에 '계정 기능 준비 중' 메시지가 표시된다.
+3. docs/account/config.js 및 dist/account/config.js에 **같은 Web 앱 설정값**을 반영했다. Stillnote Web의 appId는 `1:218352371308:web:eb4af67b7577182268ba49`, projectId는 `stilenote`, authDomain은 `stilenote.firebaseapp.com`이다. Authentication만 초기화하며 Console 예제의 Analytics는 추가하지 않았다.
 4. Firebase Console Authentication → Settings → Authorized domains에서 **실제 공개할 웹 호스트**를 허용/확인한다. API 키에 HTTP referrer/API 제한이 있다면 배포 도메인 및 Authentication API와 일치하는지 확인한다.
 5. 이메일/비밀번호 로그인 제공업체 설정을 유지한다. 이메일 확인·재설정 메일의 발신자/도메인/템플릿을 점검한다.
 6. 실계정에 영향을 주지 않는 **테스트 사용자**를 사용하여 웹 회원가입 → 확인 메일 → 로그아웃 → 로그인 → 비밀번호 재설정 → 현재 비밀번호 재인증 → 삭제 → 재로그인 실패를 양쪽 웹 호스트에서 확인한다. Android/iOS 계정과 실제 동일한 Firebase UID가 확인되는지 점검한다.
@@ -39,6 +39,10 @@
 - 실서비스 인증·계정 삭제 전 과정 및 외부 삭제 요청의 실효성 검증 없이 운영 준비 완료라고 표현하지 않는다.
 
 ## 테스트
+
+2026-11-01 Console 확인: Spark 무료 유지. 웹 앱 등록 시 Hosting 설정 미선택. 이메일/비밀번호 제공업체 활성화 상태를 유지했다. Authorized domains는 `localhost`, `stilenote.firebaseapp.com`, `stilenote.web.app`이며 추가 변경하지 않았다. 향후 Pages 공개 호스트 `dla3946gns.github.io`는 공개 승인 후 별도 확인·등록한다.
+
+로컬 Chrome 390×844 모바일 뷰에서 Firebase Web SDK 13.1.0 초기화와 로그인 화면 표시, 존재하지 않는 테스트 주소의 로그인 거부 및 비밀번호 필드 초기화를 확인했다. 이는 가입·메일 수신·비밀번호 변경·재인증 삭제의 성공을 뜻하지 않는다. 수신 가능한 테스트 이메일과 사용자 직접 비밀번호 변경을 통한 전체 검증이 남아 있다. Android/iOS/Web 설정의 프로젝트 ID와 프로젝트 번호 일치는 자동 검사하며, 세 플랫폼의 실기기 동일 UID 로그인은 별도 검증이 필요하다.
 
 - node --check dist/account/app.js
 - node --test web/tests/account-rules.test.mjs
