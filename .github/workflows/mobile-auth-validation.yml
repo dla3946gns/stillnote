@@ -8,6 +8,7 @@ on:
       - 'mobile/shared/src/**'
       - 'mobile/iosApp/**'
       - 'mobile/scripts/run-auth-emulator-tests.sh'
+      - 'mobile/scripts/run-emulator-ui-tests.sh'
       - 'mobile/test-emulators/**'
 
 permissions:
