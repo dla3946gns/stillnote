@@ -1,6 +1,14 @@
 package com.stillnotes.app
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -126,45 +134,67 @@ fun StillnoteApp(
                 BackHandler(enabled = state.hasUnsavedChanges || (!wide && state.activeNote != null)) {
                     requestAction { store.closeNote() }
                 }
-                Row(Modifier.fillMaxSize()) {
-                    if (wide || state.activeNote == null) {
-                        NotesList(
-                            state = state,
-                            modifier = if (wide) Modifier.width(320.dp) else Modifier.weight(1f),
-                            onQuery = { store.setQuery(it) },
-                            onPinnedOnly = { store.setPinnedOnly(it) },
-                            onSelect = { id ->
-                                if (id != state.activeNote?.id) requestAction { store.selectNote(id) }
-                            },
-                            onCreate = { requestAction { store.createNote() } },
-                            onExportBackup = onExportBackup,
-                            onImportBackup = { requestAction(onImportBackup) },
-                            onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } }
-                        )
-                    }
-                    if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    if (wide || state.activeNote != null) {
-                        Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
-                            val note = state.activeNote
-                            if (note == null) {
-                                EmptyEditor(canCreate = !state.loadFailed && !state.saveFailed) { store.createNote() }
-                            } else {
-                                key(note.id) {
-                                    NoteEditor(
-                                        note = note,
-                                        state = state,
-                                        showBack = !wide,
-                                        onBack = { requestAction { store.closeNote() } },
-                                        onEdit = { title, body -> store.updateNote(note.id, title, body) },
-                                        onSave = { if (store.saveNote()) store.closeNote() },
-                                        onCancel = { store.cancelEdit(); store.closeNote() },
-                                        onPin = { requestAction { store.togglePinned(note.id) } },
-                                        onDuplicate = { requestAction { store.duplicateNote(note.id) } },
-                                        onDelete = { requestAction { deleteId = note.id } },
-                                        onCopy = { onCopy(note.id) },
-                                        onShare = { onShare(note.id) },
-                                        onExportText = { onExportText(note.id) }
-                                    )
+                AnimatedContent(
+                    targetState = !wide && state.activeNote != null,
+                    modifier = Modifier.fillMaxSize(),
+                    transitionSpec = {
+                        val origin = TransformOrigin(0.5f, 0.25f)
+                        if (targetState) {
+                            (scaleIn(tween(340), initialScale = 0.75f, transformOrigin = origin) +
+                                fadeIn(tween(220))) togetherWith fadeOut(tween(160))
+                        } else {
+                            fadeIn(tween(220)) togetherWith
+                                (scaleOut(tween(280), targetScale = 0.75f, transformOrigin = origin) +
+                                    fadeOut(tween(240)))
+                        }
+                    },
+                    label = "Note editor transition"
+                ) { editing ->
+                    // Keep the outgoing screen's content available during its exit.
+                    var lastScreenState by remember { mutableStateOf(state) }
+                    val current = wide || editing == (state.activeNote != null)
+                    if (current) SideEffect { lastScreenState = state }
+                    val screenState = if (current) state else lastScreenState
+                    Row(Modifier.fillMaxSize()) {
+                        if (wide || !editing) {
+                            NotesList(
+                                state = screenState,
+                                modifier = if (wide) Modifier.width(320.dp) else Modifier.weight(1f),
+                                onQuery = { store.setQuery(it) },
+                                onPinnedOnly = { store.setPinnedOnly(it) },
+                                onSelect = { id ->
+                                    if (id != screenState.activeNote?.id) requestAction { store.selectNote(id) }
+                                },
+                                onCreate = { requestAction { store.createNote() } },
+                                onExportBackup = onExportBackup,
+                                onImportBackup = { requestAction(onImportBackup) },
+                                onOpenPrivacyPolicy = { requestAction { showPrivacyPolicy = true } }
+                            )
+                        }
+                        if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        if (wide || editing) {
+                            Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
+                                val note = screenState.activeNote
+                                if (note == null) {
+                                    EmptyEditor(canCreate = !screenState.loadFailed && !screenState.saveFailed) { store.createNote() }
+                                } else {
+                                    key(note.id) {
+                                        NoteEditor(
+                                            note = note,
+                                            state = screenState,
+                                            showBack = !wide,
+                                            onBack = { requestAction { store.closeNote() } },
+                                            onEdit = { title, body -> store.updateNote(note.id, title, body) },
+                                            onSave = { if (store.saveNote()) store.closeNote() },
+                                            onCancel = { store.cancelEdit(); store.closeNote() },
+                                            onPin = { requestAction { store.togglePinned(note.id) } },
+                                            onDuplicate = { requestAction { store.duplicateNote(note.id) } },
+                                            onDelete = { requestAction { deleteId = note.id } },
+                                            onCopy = { onCopy(note.id) },
+                                            onShare = { onShare(note.id) },
+                                            onExportText = { onExportText(note.id) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -308,8 +338,8 @@ private fun NotesList(
                 }
             }
         }
-        Text("생각을 가볍게 남겨요", Modifier.padding(start = 20.dp, bottom = 16.dp),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("지금 떠오른 생각,\n여기에.", Modifier.padding(start = 20.dp, bottom = 16.dp),
+            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
         Button(onClick = onCreate, enabled = !state.saveFailed && !state.loadFailed,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("새 메모") }
         OutlinedTextField(
@@ -346,7 +376,7 @@ private fun NotesList(
                     Surface(
                         onClick = { onSelect(note.id) },
                         color = if (state.activeNote?.id == note.id) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.background,
+                            else MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth().semantics { selected = state.activeNote?.id == note.id }
                     ) {
