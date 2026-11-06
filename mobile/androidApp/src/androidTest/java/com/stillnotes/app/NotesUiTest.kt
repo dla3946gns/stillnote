@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
-import android.util.Log
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
@@ -88,19 +87,18 @@ class NotesUiTest {
                 compose.waitUntil(6_000) { isKeyboardVisible() }
                 return
             } catch (error: ComposeTimeoutException) {
-                val focused = compose.onNodeWithTag(tag).fetchSemanticsNode().config
-                    .getOrElse(SemanticsProperties.Focused) { false }
-                scenario.onActivity { activity ->
-                    val insets = activity.window.decorView.rootWindowInsets
-                    Log.w(
-                        "StillnoteKeyboardTest",
-                        "tag=$tag attempt=${attempt + 1} composeFocused=$focused " +
-                            "windowFocused=${activity.hasWindowFocus()} " +
+                if (attempt == 2) {
+                    val focused = compose.onNodeWithTag(tag).fetchSemanticsNode().config
+                        .getOrElse(SemanticsProperties.Focused) { false }
+                    var state = ""
+                    scenario.onActivity { activity ->
+                        val insets = activity.window.decorView.rootWindowInsets
+                        state = "windowFocused=${activity.hasWindowFocus()} " +
                             "imeVisible=${insets?.isVisible(WindowInsets.Type.ime())} " +
-                            "imeBottom=${insets?.getInsets(WindowInsets.Type.ime())?.bottom}",
-                    )
+                            "imeBottom=${insets?.getInsets(WindowInsets.Type.ime())?.bottom}"
+                    }
+                    throw AssertionError("Keyboard timeout: tag=$tag composeFocused=$focused $state", error)
                 }
-                if (attempt == 2) throw error
                 scenario.onActivity { activity ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         activity.window.decorView.windowInsetsController
