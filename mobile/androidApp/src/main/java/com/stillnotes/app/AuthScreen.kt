@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +29,7 @@ private enum class AuthPage { LOGIN, REGISTER, RESET }
 @Composable
 fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
     var page by remember { mutableStateOf(AuthPage.LOGIN) }
+    var ageConfirmed by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var visiblePassword by remember { mutableStateOf(false) }
@@ -42,10 +44,10 @@ fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
             scrollState.scrollTo(scrollState.maxValue)
         }
     }
-    fun changePage(next: AuthPage) { page = next; password = ""; model.clearMessage() }
-    fun close() { password = ""; deletionPassword = ""; onClose() }
+    fun changePage(next: AuthPage) { page = next; ageConfirmed = false; password = ""; model.clearMessage() }
+    fun close() { ageConfirmed = false; password = ""; deletionPassword = ""; onClose() }
     BackHandler { if (page != AuthPage.LOGIN && model.account == null) changePage(AuthPage.LOGIN) else close() }
-    LaunchedEffect(model.account?.uid) { password = ""; deletionPassword = ""; deleting = false }
+    LaunchedEffect(model.account?.uid) { ageConfirmed = false; password = ""; deletionPassword = ""; deleting = false }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, contentWindowInsets = WindowInsets.safeDrawing) { inset ->
         Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(scrollState)
             .padding(horizontal = 26.dp, vertical = 16.dp).testTag("auth-screen")) {
@@ -78,34 +80,47 @@ fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
                             Text("계정 삭제", color = MaterialTheme.colorScheme.error)
                         }
                     } else {
-                        Text(if (currentPage == AuthPage.RESET) "가입한 이메일로 재설정 링크를 보내드려요." else "StillNote 계정의 이메일을 입력해 주세요.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(28.dp))
-                        OutlinedTextField(value = email, onValueChange = { email = it; model.clearMessage() }, label = { Text("이메일") }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !model.busy,
-                            modifier = Modifier.fillMaxWidth().testTag("auth-email"))
-                        if (currentPage != AuthPage.RESET) {
-                            Spacer(Modifier.height(16.dp))
-                            OutlinedTextField(value = password, onValueChange = { password = it; model.clearMessage() }, label = { Text("비밀번호") }, singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), enabled = !model.busy,
-                                visualTransformation = if (visiblePassword) VisualTransformation.None else PasswordVisualTransformation(),
-                                trailingIcon = { TextButton(onClick = { visiblePassword = !visiblePassword }) { Text(if (visiblePassword) "숨기기" else "보기") } },
-                                modifier = Modifier.fillMaxWidth().testTag("auth-password"))
-                        }
-                        if (currentPage == AuthPage.LOGIN) TextButton(onClick = { changePage(AuthPage.RESET) }, enabled = !model.busy) { Text("비밀번호를 잊었나요?") }
-                        Spacer(Modifier.height(24.dp))
-                        Button(onClick = {
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                            when (currentPage) {
-                                AuthPage.LOGIN -> model.signIn(email, password)
-                                AuthPage.REGISTER -> model.register(email, password)
-                                AuthPage.RESET -> model.resetPassword(email)
+                        if (currentPage == AuthPage.REGISTER) {
+                            Text("Stillnote 계정은 만 18세 이상만 만들 수 있어요. 계정 없이도 이 기기·브라우저의 메모 기능은 이용할 수 있어요.",
+                                style = MaterialTheme.typography.bodyMedium)
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Checkbox(checked = ageConfirmed, onCheckedChange = { ageConfirmed = it; password = ""; model.clearMessage() },
+                                    enabled = !model.busy, modifier = Modifier.testTag("auth-age-confirmation").semantics { contentDescription = "만 18세 이상입니다." })
+                                Text("만 18세 이상입니다.")
                             }
-                            password = ""
-                        }, enabled = !model.busy && email.isNotBlank() && (currentPage == AuthPage.RESET || password.isNotEmpty()),
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("auth-submit")) {
-                            Text(if (model.busy) "확인 중…" else when (currentPage) { AuthPage.LOGIN -> "로그인"; AuthPage.REGISTER -> "계정 만들기"; AuthPage.RESET -> "재설정 링크 받기" })
+                            Text("현재 만 18세 미만은 계정을 만들 수 없어요. 개인정보처리방침은 공개 전 확정 예정입니다.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (currentPage != AuthPage.REGISTER || ageConfirmed) {
+                            Text(if (currentPage == AuthPage.RESET) "가입한 이메일로 재설정 링크를 보내드려요." else "StillNote 계정의 이메일을 입력해 주세요.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(28.dp))
+                            OutlinedTextField(value = email, onValueChange = { email = it; model.clearMessage() }, label = { Text("이메일") }, singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !model.busy,
+                                modifier = Modifier.fillMaxWidth().testTag("auth-email"))
+                            if (currentPage != AuthPage.RESET) {
+                                Spacer(Modifier.height(16.dp))
+                                OutlinedTextField(value = password, onValueChange = { password = it; model.clearMessage() }, label = { Text("비밀번호") }, singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), enabled = !model.busy,
+                                    visualTransformation = if (visiblePassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = { TextButton(onClick = { visiblePassword = !visiblePassword }) { Text(if (visiblePassword) "숨기기" else "보기") } },
+                                    modifier = Modifier.fillMaxWidth().testTag("auth-password"))
+                            }
+                            if (currentPage == AuthPage.LOGIN) TextButton(onClick = { changePage(AuthPage.RESET) }, enabled = !model.busy) { Text("비밀번호를 잊었나요?") }
+                            Spacer(Modifier.height(24.dp))
+                            Button(onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                when (currentPage) {
+                                    AuthPage.LOGIN -> model.signIn(email, password)
+                                    AuthPage.REGISTER -> model.register(email, password, ageConfirmed)
+                                    AuthPage.RESET -> model.resetPassword(email)
+                                }
+                                password = ""
+                            }, enabled = !model.busy && email.isNotBlank() && (currentPage == AuthPage.RESET || password.isNotEmpty()),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("auth-submit")) {
+                                Text(if (model.busy) "확인 중…" else when (currentPage) { AuthPage.LOGIN -> "로그인"; AuthPage.REGISTER -> "계정 만들기"; AuthPage.RESET -> "재설정 링크 받기" })
+                            }
                         }
                         TextButton(onClick = { changePage(if (currentPage == AuthPage.LOGIN) AuthPage.REGISTER else AuthPage.LOGIN) }, enabled = !model.busy) {
                             Text(if (currentPage == AuthPage.LOGIN) "처음 오셨나요? 회원가입" else "로그인으로 돌아가기")
@@ -136,6 +151,7 @@ fun AuthScreen(onClose: () -> Unit, model: AuthViewModel = viewModel()) {
 private fun authProblemText(problem: AuthProblem): String = when (problem) {
     AuthProblem.INVALID_EMAIL -> "이메일 주소를 확인해 주세요."
     AuthProblem.MISSING_PASSWORD -> "비밀번호를 입력해 주세요."
+    AuthProblem.AGE_CONFIRMATION_REQUIRED -> "계정을 만들려면 만 18세 이상임을 확인해 주세요."
     AuthProblem.INVALID_CREDENTIALS -> "이메일과 비밀번호를 다시 확인해 주세요."
     AuthProblem.NETWORK -> "연결을 확인하고 다시 시도해 주세요."
     AuthProblem.TOO_MANY_REQUESTS -> "요청이 많아요. 잠시 후 다시 시도해 주세요."

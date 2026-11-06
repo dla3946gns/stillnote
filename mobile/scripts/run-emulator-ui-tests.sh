@@ -35,13 +35,17 @@ fi
 
 echo "::group::Android UI tests (light)"
 adb shell cmd uimode night no
-bash ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
+# The Auth emulator lifecycle test runs in mobile-auth-validation.yml, which
+# starts its required server. This UI-only runner has no Auth emulator.
+bash ./gradlew :androidApp:connectedDebugAndroidTest \
+    -Pandroid.testInstrumentationRunnerArguments.notClass=com.stillnotes.app.AndroidEmailAuthEmulatorTest --stacktrace
 light_exit=$?
 echo "::endgroup::"
 
 echo "::group::Android UI tests (dark)"
 adb shell cmd uimode night yes
-bash ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks --stacktrace
+bash ./gradlew :androidApp:connectedDebugAndroidTest \
+    -Pandroid.testInstrumentationRunnerArguments.notClass=com.stillnotes.app.AndroidEmailAuthEmulatorTest --rerun-tasks --stacktrace
 dark_exit=$?
 echo "::endgroup::"
 

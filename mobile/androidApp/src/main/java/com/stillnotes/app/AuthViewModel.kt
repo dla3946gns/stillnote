@@ -35,11 +35,11 @@ class AuthViewModel : ViewModel() {
     fun signIn(email: String, password: String) =
         run("로그인했어요.") { gateway.signIn(email, password, it) }
 
-    fun register(email: String, password: String) {
+    fun register(email: String, password: String, ageConfirmed: Boolean) {
         if (busy) return
         busy = true
         clearMessage()
-        gateway.register(email, password) { error ->
+        gateway.register(email, password, ageConfirmed) { error ->
             if (error != null) {
                 busy = false
                 problem = error

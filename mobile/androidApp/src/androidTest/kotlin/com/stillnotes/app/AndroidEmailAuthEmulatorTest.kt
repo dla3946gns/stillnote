@@ -40,7 +40,9 @@ class AndroidEmailAuthEmulatorTest {
         val email = "audit-${UUID.randomUUID()}@example.test"
         val password = "Synthetic-only-password-42!"
         try {
-            assertNull(result { gateway.register(email, password, it) })
+            assertEquals(AuthProblem.AGE_CONFIRMATION_REQUIRED, result { gateway.register(email, password, false, it) })
+            assertNull(gateway.currentAccount)
+            assertNull(result { gateway.register(email, password, true, it) })
             assertEquals(email, gateway.currentAccount?.email)
             assertNull(result(gateway::sendVerification))
             gateway.signOut()

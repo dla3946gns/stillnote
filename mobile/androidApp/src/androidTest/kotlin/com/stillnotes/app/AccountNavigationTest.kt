@@ -1,6 +1,8 @@
 package com.stillnotes.app
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -35,6 +37,17 @@ class AccountNavigationTest {
             compose.onNodeWithText("이메일 주소를 확인해 주세요.").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("비밀번호를 잊었나요?").performScrollTo().performClick()
             compose.onNodeWithText("재설정 링크 받기").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("로그인으로 돌아가기").performScrollTo().performClick()
+            compose.onNodeWithText("처음 오셨나요? 회원가입").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-age-confirmation").assertIsOff()
+            compose.onNodeWithTag("auth-email").assertDoesNotExist()
+            compose.onNodeWithTag("auth-age-confirmation").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-age-confirmation").assertIsOn()
+            compose.onNodeWithTag("auth-email").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("로그인으로 돌아가기").performScrollTo().performClick()
+            compose.onNodeWithText("처음 오셨나요? 회원가입").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-age-confirmation").assertIsOff()
+            compose.onNodeWithTag("auth-email").assertDoesNotExist()
             compose.onNodeWithText("로그인 없이 계속 쓰기").performScrollTo().performClick()
             compose.onNodeWithText("새 메모").assertIsDisplayed()
         }

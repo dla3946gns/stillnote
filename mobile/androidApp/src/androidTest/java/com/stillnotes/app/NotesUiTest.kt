@@ -9,6 +9,8 @@ import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrElse
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
@@ -85,7 +87,18 @@ class NotesUiTest {
                 compose.waitUntil(6_000) { isKeyboardVisible() }
                 return
             } catch (error: ComposeTimeoutException) {
-                if (attempt == 2) throw error
+                if (attempt == 2) {
+                    val focused = compose.onNodeWithTag(tag).fetchSemanticsNode().config
+                        .getOrElse(SemanticsProperties.Focused) { false }
+                    var state = ""
+                    scenario.onActivity { activity ->
+                        val insets = activity.window.decorView.rootWindowInsets
+                        state = "windowFocused=${activity.hasWindowFocus()} " +
+                            "imeVisible=${insets?.isVisible(WindowInsets.Type.ime())} " +
+                            "imeBottom=${insets?.getInsets(WindowInsets.Type.ime())?.bottom}"
+                    }
+                    throw AssertionError("Keyboard timeout: tag=$tag composeFocused=$focused $state", error)
+                }
                 scenario.onActivity { activity ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         activity.window.decorView.windowInsetsController

@@ -30,14 +30,14 @@ final class AuthModel {
         run(success: "로그인했어요.") { try await self.gateway.signIn(email: email, password: password) }
     }
 
-    func register(email: String, password: String) {
+    func register(email: String, password: String, ageConfirmed: Bool) {
         guard !busy else { return }
         busy = true
         clearMessage()
         Task { @MainActor in
             defer { busy = false; account = gateway.currentAccount }
             do {
-                try await gateway.register(email: email, password: password)
+                try await gateway.register(email: email, password: password, ageConfirmed: ageConfirmed)
                 do {
                     try await gateway.sendVerification()
                     message = "계정을 만들었어요. 이메일 확인 메일을 확인해 주세요."
