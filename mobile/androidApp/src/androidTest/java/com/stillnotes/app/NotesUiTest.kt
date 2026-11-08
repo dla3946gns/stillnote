@@ -10,8 +10,10 @@ import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +22,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -79,8 +82,10 @@ class NotesUiTest {
      */
     private fun tapUntilKeyboardVisible(tag: String) {
         repeat(3) { attempt ->
-            compose.onNodeWithTag(tag).performClick()
-            compose.waitForIdle()
+            val field = compose.onNodeWithTag(tag)
+            // Dispatch a pointer tap so the text field takes the same IME path as a user tap.
+            field.performTouchInput { click() }
+            field.assertIsFocused()
             try {
                 compose.waitUntil(6_000) { isKeyboardVisible() }
                 return
