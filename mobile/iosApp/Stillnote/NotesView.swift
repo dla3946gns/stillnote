@@ -57,7 +57,7 @@ struct NotesView: View {
                 NoteEditor(
                     model: model,
                     noteID: note.id,
-                    exportText: exportText,
+                    exportText: { exportText(id: $0) },
                     close: { request(.select(nil)) },
                     togglePin: { request(.togglePin(note.id)) },
                     duplicate: { request(.duplicate(note.id)) },
@@ -215,7 +215,7 @@ struct NotesView: View {
                 }
             }
         }
-        .searchable(text: Binding(get: { model.state.query }, set: model.setQuery), prompt: "메모 검색")
+        .searchable(text: Binding(get: { model.state.query }, set: { model.setQuery($0) }), prompt: "메모 검색")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
