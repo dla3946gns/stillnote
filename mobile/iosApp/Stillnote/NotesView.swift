@@ -40,7 +40,7 @@ struct NotesView: View {
             }
         )) {
             sidebar
-                .navigationTitle("Stillnote")
+                .navigationTitle("AJ Notes")
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 380)
         } detail: {
             if model.state.loadFailed {
