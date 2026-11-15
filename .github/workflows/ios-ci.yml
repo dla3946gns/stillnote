@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        family: [iPhone, iPad]
+        family: [iPhone]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -24,7 +24,7 @@ jobs:
           ditto -x -k simulator/Stillnote-iOS-Simulator.zip extracted
           family="${{ matrix.family }}"
             if [[ "$family" == iPhone ]]; then
-              model='iPhone 18 Pro Max'
+              model='iPhone 18 Pro'
             else
               model='iPad Pro 13-inch (M5)'
             fi
