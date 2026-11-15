@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       upload:
-        description: Sign and upload to TestFlight internal testing
+        description: Sign and upload to App Store Connect
         type: boolean
         default: false
+      internal_only:
+        description: Restrict uploaded build to TestFlight internal testing
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -51,6 +55,7 @@ jobs:
         if: inputs.upload
         shell: bash
         env:
+          TESTFLIGHT_INTERNAL_ONLY: ${{ inputs.internal_only }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
@@ -66,7 +71,7 @@ jobs:
           unset ASC_PRIVATE_KEY
 
           options="$RUNNER_TEMP/TestFlightExportOptions.plist"
-          cat > "$options" <<'PLIST'
+          cat > "$options" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -80,7 +85,7 @@ jobs:
             <key>teamID</key>
             <string>R8P3TN6FZS</string>
             <key>testFlightInternalTestingOnly</key>
-            <true/>
+            <$TESTFLIGHT_INTERNAL_ONLY/>
             <key>manageAppVersionAndBuildNumber</key>
             <false/>
           </dict>
