@@ -1,0 +1,49 @@
+name: iOS unsigned build verification
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ios-build.yml'
+      - 'mobile/iosApp/**'
+      - 'mobile/shared/**'
+      - 'mobile/gradle/**'
+      - 'mobile/gradle.properties'
+      - 'mobile/gradlew'
+      - 'mobile/build.gradle.kts'
+      - 'mobile/settings.gradle.kts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    name: Xcode 27 iOS Simulator build (unsigned)
+    runs-on: xcode-27
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Show build tool versions
+        run: |
+          xcodebuild -version
+          java -version
+          uname -m
+      - name: Build Stillnote for iOS Simulator without code signing
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project mobile/iosApp/Stillnote.xcodeproj \
+            -scheme Stillnote \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/stillnote-ios-derived-data" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
