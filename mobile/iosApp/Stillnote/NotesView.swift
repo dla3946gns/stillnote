@@ -241,8 +241,14 @@ struct NotesView: View {
                         request(.beginImport)
                     }
                     .disabled(model.state.loadFailed || model.state.saveFailed)
+                    Divider()
+                    if let privacyURL = URL(string: "https://dla3946gns.github.io/stillnote/aj-notes/") {
+                        Link(destination: privacyURL) {
+                            Label("개인정보처리방침", systemImage: "hand.raised")
+                        }
+                    }
                 } label: {
-                    Label("백업", systemImage: "ellipsis")
+                    Label("더 보기", systemImage: "ellipsis")
                 }
                 Button("새 메모", systemImage: "square.and.pencil") { request(.create) }
                     .disabled(model.state.loadFailed)
