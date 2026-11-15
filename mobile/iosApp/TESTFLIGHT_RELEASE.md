@@ -14,12 +14,10 @@
 
 ## 업로드 전 준비
 
-1. **아이콘**: 현재 iOS Xcode 프로젝트에 AppIcon asset catalog가 없음. 승인된 AJ Notes 아이콘을 1024×1024 픽셀 원본 이미지로 확정하고 Xcode asset catalog에 등록할 것. Android용 기존 감자 캐릭터 SVG는 최종 AJ Notes 아이콘으로 자동 간주하지 않음.
-2. **Apple Distribution 인증서**: `Certificates, Identifiers & Profiles`에서 기존 유효한 배포 인증서와 해당 **개인키** 보유 여부부터 확인. 존재한다면 재사용. 새 인증서가 필요할 때는 소유자 명시 승인 후 생성. GitHub Actions에 임포트할 때는 비밀번호로 보호된 `.p12` 형식이 필요함.
-3. **App Store Connect 프로비저닝 프로파일**: `Profiles → + → Distribution → App Store Connect`에서 `com.stillnotes.app` App ID 및 위 배포 인증서를 선택해 생성·다운로드. 유효한 기존 프로파일이 있으면 재사용.
-4. **App Store Connect API 키**: 계정의 `Users and Access → Integrations → App Store Connect API`에서 기존 유효한 권한과 키가 있는지 확인. 필요하다면 최소 권한 키 생성 후 Key ID, Issuer ID와 `.p8` 키를 안전하게 보관.
-5. **GitHub 보호 환경**: `ios-testflight` 환경의 승인자 설정 및 서명 인증서/프로파일/API 키를 환경 Secret으로 보관. 비밀키·비밀번호·`.p12`·`.p8`·프로파일은 코드, PR, CI 아티팩트, 이슈, 채팅에 첨부하지 않음.
-6. **정식 서명 및 업로드 워크플로**: 준비 완료 후 수동 실행 전용 workflow를 별도 검토해 생성. `xcodebuild archive` → Apple Distribution 서명 → 검증/내보내기 → App Store Connect 업로드. **자동 업로드나 심사 제출은 지금 구성하지 않음.** 첫 업로드 및 서명 Secret 변경 전에는 소유자 승인을 받을 것.
+1. **아이콘**은 기존 Stillnote 감자 아이콘을 사용합니다. 1024×1024 RGB PNG를 iOS AppIcon에 포함합니다.
+2. App Store Connect → 사용자 및 액세스 → 통합에서 클라우드 배포 서명 권한이 있는 **팀 API 키**를 준비합니다.
+3. GitHub Actions의 `ios-testflight` 환경에 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`를 Secrets로 등록합니다. `ASC_PRIVATE_KEY`에는 `.p8` 파일의 전체 내용을 저장합니다.
+4. `main`에서 **AJ Notes TestFlight** 워크플로를 수동 실행합니다. 기본 실행은 iPhone용 아카이브의 번들 ID, 버전, 아이콘을 확인합니다. `upload`를 선택하면 Xcode가 Apple 클라우드 서명을 요청하고 내부 테스트 전용 빌드를 업로드합니다.
 
 ## TestFlight 내부 테스트
 
