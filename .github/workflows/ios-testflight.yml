@@ -1,0 +1,97 @@
+name: AJ Notes TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Sign and upload to TestFlight internal testing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aj-notes-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    if: github.ref == 'refs/heads/main'
+    environment: ios-testflight
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Archive AJ Notes for iPhone
+        shell: bash
+        run: |
+          xcodebuild -version
+          chmod +x mobile/gradlew
+          xcodebuild archive \
+            -project mobile/iosApp/Stillnote.xcodeproj \
+            -scheme Stillnote \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/AJNotes.xcarchive" \
+            DEVELOPMENT_TEAM=R8P3TN6FZS \
+            CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT"
+          info="$RUNNER_TEMP/AJNotes.xcarchive/Products/Applications/Stillnote.app/Info.plist"
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$info")" == com.stillnotes.app ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")" == 1.0 ]]
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon' "$info"
+      - name: Cloud-sign and upload to App Store Connect
+        if: inputs.upload
+        shell: bash
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          : "${ASC_KEY_ID:?Missing ASC_KEY_ID}"
+          : "${ASC_ISSUER_ID:?Missing ASC_ISSUER_ID}"
+          : "${ASC_PRIVATE_KEY:?Missing ASC_PRIVATE_KEY}"
+          umask 077
+          key_dir="$(mktemp -d "$RUNNER_TEMP/asc-key.XXXXXX")"
+          trap 'rm -f "$key_dir"/AuthKey_*.p8; rmdir "$key_dir"' EXIT
+          key_path="$key_dir/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$key_path"
+          unset ASC_PRIVATE_KEY
+
+          options="$RUNNER_TEMP/TestFlightExportOptions.plist"
+          cat > "$options" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>R8P3TN6FZS</string>
+            <key>testFlightInternalTestingOnly</key>
+            <true/>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/AJNotes.xcarchive" \
+            -exportPath "$RUNNER_TEMP/AJNotes-export" \
+            -exportOptionsPlist "$options" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$key_path" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
