@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import StillnoteShared
 
-private final class LocalNotesStorage: NSObject, NotesStorage {
+private final class LocalNotesStorage: NSObject, IosNotesFiles {
     private func fileURL() throws -> URL {
         let directory = try FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -14,18 +14,34 @@ private final class LocalNotesStorage: NSObject, NotesStorage {
         return directory.appendingPathComponent("stillnote-notes.json")
     }
 
-    func read() throws -> String? {
-        let url = try fileURL()
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return try String(contentsOf: url, encoding: .utf8)
+    func read() -> IosNotesReadResult {
+        do {
+            let url = try fileURL()
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                return IosNotesReadResult(content: nil, errorMessage: nil)
+            }
+            return IosNotesReadResult(
+                content: try String(contentsOf: url, encoding: .utf8),
+                errorMessage: nil
+            )
+        } catch {
+            return IosNotesReadResult(content: nil, errorMessage: error.localizedDescription)
+        }
     }
 
-    func write(content: String) throws {
-        try content.write(to: fileURL(), atomically: true, encoding: .utf8)
+    func write(content: String) -> String? {
+        do {
+            try content.write(to: fileURL(), atomically: true, encoding: .utf8)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 }
 
-private final class StoreObserver: NSObject, NotesObserver {
+// NotesModel calls NotesStore on MainActor; its observer callbacks are synchronous.
+@MainActor
+private final class StoreObserver: NSObject, @preconcurrency NotesObserver {
     private let onChange: @MainActor (NotesState) -> Void
 
     init(onChange: @escaping @MainActor (NotesState) -> Void) {
@@ -34,7 +50,7 @@ private final class StoreObserver: NSObject, NotesObserver {
     }
 
     func onChanged(state: NotesState) {
-        MainActor.assumeIsolated { onChange(state) }
+        onChange(state)
     }
 }
 
@@ -46,7 +62,7 @@ final class NotesModel {
     @ObservationIgnored private var observer: StoreObserver?
 
     init() {
-        let store = NotesStore(storage: LocalNotesStorage())
+        let store = NotesStore(storage: IosNotesStorage(files: LocalNotesStorage()))
         self.store = store
         state = store.state
         let observer = StoreObserver { [weak self] state in

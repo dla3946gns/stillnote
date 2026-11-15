@@ -128,12 +128,12 @@ Android applicationId와 iOS Bundle Identifier는 `com.stillnotes.app`입니다.
 
 - 공통 Kotlin 메타데이터 컴파일: 성공.
 - Android APK 빌드: 성공. 저장 처리 보완 후 재빌드도 성공.
-- iOS Swift 컴파일·시뮬레이터·실기기 실행: Windows 환경이므로 미수행.
+- iOS Swift 컴파일·시뮬레이터 기동: `iOS simulator validation` GitHub Actions로 검증합니다. 명령·산출물·확인 범위는 [iOS 안내](iosApp/README.md)를 참고하세요.
 - 공통 메모 로직 14개, Android 파일 저장 호스트 테스트 3개: GitHub Actions #43에서 통과.
 - API 35 에뮬레이터 Compose UI 8개 + Android JSON 백업/문서 공급자 계측 테스트 5개를 라이트·다크 모드에서 각각 실행: 총 26회 GitHub Actions #43 통과.
 - 사용자 보고: 삼성 Android 실기기에서 키보드 표시, 작성·저장, 재시작 후 데이터 유지, JSON 백업·복원, 취소·검색·삭제 5개 항목 통과.
 - 회전·큰 글씨, 타사 키보드·다른 제조사, 클라우드 문서 공급자 등 추가 기기 호환성 QA: 미완료. [체크리스트](ANDROID_DEVICE_QA.md) 참조.
 - Android Google Play 릴리스: 업로드키·환경 Secret·서명 AAB·Play 내부 테스트는 별도 준비 작업 중. 스토어 공개 전 확인 필요.
-- iOS Swift 컴파일·시뮬레이터·실기기 실행 및 App Store 배포: Mac 환경을 사용할 수 있을 때까지 보류.
+- iOS 실제 기기 설치·TestFlight·App Store 배포: 별도 Apple 계정 및 서명 설정 후 검증이 필요합니다.
 
 Android 앱과 실기기 QA 개선은 PR #1·#2를 통해 `main`에 병합됐습니다. Android 정식 릴리스 구성은 새로운 PR로 검증하며, Google Play 자동 배포는 하지 않습니다.
