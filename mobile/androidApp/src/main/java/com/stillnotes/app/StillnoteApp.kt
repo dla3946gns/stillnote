@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,8 +21,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -27,6 +32,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -285,40 +291,56 @@ private fun NotesList(
     onOpenPrivacyPolicy: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.app_name), Modifier.weight(1f), color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Box {
-                TextButton(onClick = { menuOpen = true }) { Text("더보기") }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("전체 메모 백업") }, onClick = {
-                        menuOpen = false
-                        onExportBackup()
-                    }, enabled = !state.loadFailed)
-                    DropdownMenuItem(text = { Text("백업 가져오기") }, onClick = {
-                        menuOpen = false
-                        onImportBackup()
-                    }, enabled = !state.loadFailed && !state.saveFailed)
-                    HorizontalDivider()
-                    DropdownMenuItem(text = { Text("개인정보처리방침") }, onClick = {
-                        menuOpen = false
-                        onOpenPrivacyPolicy()
-                    })
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledTonalIconToggleButton(checked = state.pinnedOnly, onCheckedChange = onPinnedOnly) {
+                Icon(painterResource(R.drawable.ic_pin_note), contentDescription = "고정 메모")
+            }
+            NotesToolbar {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(painterResource(R.drawable.ic_notes_more), contentDescription = "더보기")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(text = { Text("전체 메모 백업") }, onClick = {
+                            menuOpen = false
+                            onExportBackup()
+                        }, enabled = !state.loadFailed)
+                        DropdownMenuItem(text = { Text("백업 가져오기") }, onClick = {
+                            menuOpen = false
+                            onImportBackup()
+                        }, enabled = !state.loadFailed && !state.saveFailed)
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text("개인정보처리방침") }, onClick = {
+                            menuOpen = false
+                            onOpenPrivacyPolicy()
+                        })
+                    }
+                }
+                IconButton(onClick = onCreate, enabled = !state.saveFailed && !state.loadFailed) {
+                    Icon(painterResource(R.drawable.ic_compose_note), contentDescription = "새 메모")
                 }
             }
         }
-        Text("생각을 가볍게 남겨요", Modifier.padding(start = 20.dp, bottom = 16.dp),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = onCreate, enabled = !state.saveFailed && !state.loadFailed,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("새 메모") }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            FilterChip(selected = state.pinnedOnly, onClick = { onPinnedOnly(!state.pinnedOnly) },
-                label = { Text("고정 메모") })
-            Spacer(Modifier.weight(1f))
-            Text("${state.visibleNotes.size}개", style = MaterialTheme.typography.labelLarge,
+        Text(
+            stringResource(R.string.app_name),
+            Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(if (state.pinnedOnly) "고정한 메모" else "모든 메모",
+                style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${state.visibleNotes.size}개", style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (state.visibleNotes.isEmpty()) {
@@ -358,15 +380,32 @@ private fun NotesList(
                         }
                     }
                 }
+                item {
+                    Text(
+                        "메모는 이 기기에 저장돼요",
+                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
-        OutlinedTextField(
+        TextField(
             value = state.query,
             onValueChange = onQuery,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("notes-search"),
-            label = { Text("메모 검색") },
+            placeholder = { Text("메모 검색") },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+            shape = CircleShape,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            leadingIcon = { Icon(painterResource(R.drawable.ic_note_search), contentDescription = null) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             trailingIcon = {
                 if (state.query.isNotEmpty()) TextButton(onClick = { onQuery("") }) { Text("지우기") }
             }
@@ -398,38 +437,56 @@ private fun NoteEditor(
         if (body.text != note.body) body = TextFieldValue(note.body)
     }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            if (showBack) TextButton(onClick = onBack) { Text("목록") }
-            val unsaved = state.hasUnsavedChanges || state.saveFailed
-            Text(if (unsaved) "미저장" else "기기에 저장됨", Modifier.weight(1f).padding(horizontal = 12.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (unsaved) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-            Box {
-                TextButton(onClick = { menuOpen = true }) { Text("메모 메뉴") }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    val canChange = !state.isNewNote && !state.loadFailed && !state.saveFailed
-                    fun closeAnd(action: () -> Unit) { menuOpen = false; action() }
-                    DropdownMenuItem(text = { Text(if (note.pinned) "고정 해제" else "메모 고정") },
-                        onClick = { closeAnd(onPin) }, enabled = canChange)
-                    DropdownMenuItem(text = { Text("메모 복제") }, onClick = { closeAnd(onDuplicate) }, enabled = canChange)
-                    DropdownMenuItem(text = { Text("내용 복사") }, onClick = { closeAnd(onCopy) })
-                    DropdownMenuItem(text = { Text("공유") }, onClick = { closeAnd(onShare) })
-                    DropdownMenuItem(text = { Text("텍스트 파일 저장") }, onClick = { closeAnd(onExportText) })
-                    HorizontalDivider()
-                    DropdownMenuItem(text = { Text("메모 삭제", color = MaterialTheme.colorScheme.error) },
-                        onClick = { closeAnd(onDelete) }, enabled = canChange)
+        val canChange = !state.isNewNote && !state.loadFailed && !state.saveFailed
+        val unsaved = state.hasUnsavedChanges || state.saveFailed
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (showBack) {
+                FilledTonalIconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                    Icon(painterResource(R.drawable.ic_note_back), contentDescription = "목록")
+                }
+            }
+            Text("메모", Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleMedium)
+            NotesToolbar(Modifier.align(Alignment.CenterEnd)) {
+                IconToggleButton(checked = note.pinned, onCheckedChange = { onPin() }, enabled = canChange) {
+                    Icon(
+                        painterResource(R.drawable.ic_pin_note),
+                        contentDescription = if (note.pinned) "고정 해제" else "메모 고정",
+                        tint = if (note.pinned) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                    )
+                }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(painterResource(R.drawable.ic_notes_more), contentDescription = "메모 메뉴")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        fun closeAnd(action: () -> Unit) { menuOpen = false; action() }
+                        DropdownMenuItem(text = { Text("메모 복제") }, onClick = { closeAnd(onDuplicate) }, enabled = canChange)
+                        DropdownMenuItem(text = { Text("내용 복사") }, onClick = { closeAnd(onCopy) })
+                        DropdownMenuItem(text = { Text("공유") }, onClick = { closeAnd(onShare) })
+                        DropdownMenuItem(text = { Text("텍스트 파일 저장") }, onClick = { closeAnd(onExportText) })
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text("메모 삭제", color = MaterialTheme.colorScheme.error) },
+                            onClick = { closeAnd(onDelete) }, enabled = canChange)
+                    }
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onCancel) { Text("취소") }
-            Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(start = 24.dp, top = 12.dp, end = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(if (unsaved) "미저장" else "저장됨", style = MaterialTheme.typography.labelMedium,
+                color = if (unsaved) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${body.text.length}자", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalButton(onClick = onCancel) { Text("취소") }
             Button(onClick = onSave, enabled = !state.loadFailed) { Text("저장") }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // Allow the entire editor (including title) to scroll when the IME or
         // accessibility text size leaves less vertical space for composing.
         Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
@@ -442,13 +499,13 @@ private fun NoteEditor(
                         onEdit(value.text, body.text)
                     }
                 },
-                textStyle = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onSurface),
+                textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("note-title").semantics { contentDescription = "메모 제목" },
                 decorationBox = { field ->
                     Box {
-                        if (title.text.isEmpty()) Text("제목", style = MaterialTheme.typography.headlineSmall,
+                        if (title.text.isEmpty()) Text("제목", style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         field()
                     }
@@ -456,7 +513,7 @@ private fun NoteEditor(
             )
             Text("제목 ${title.text.length}/120자", Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
             BasicTextField(
                 value = body,
                 onValueChange = { value -> body = value; onEdit(title.text, value.text) },
@@ -472,10 +529,23 @@ private fun NoteEditor(
                     }
                 }
             )
-            Text("본문 ${body.text.length}자 · ${dateLabel(note.updatedAt)}", Modifier.padding(top = 12.dp),
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+private fun NotesToolbar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    HorizontalFloatingToolbar(
+        expanded = true,
+        modifier = modifier,
+        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+            toolbarContainerColor = MaterialTheme.colorScheme.surface,
+            toolbarContentColor = MaterialTheme.colorScheme.primary
+        ),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        expandedShadowElevation = 1.dp,
+        content = content
+    )
 }
 
 @Composable
