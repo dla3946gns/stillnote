@@ -1,0 +1,121 @@
+name: Submit AJ Notes to Google Play
+
+# Production releases are never triggered by push or PR.
+on:
+  workflow_dispatch:
+    inputs:
+      release_run_id:
+        description: Successful Android signed release AAB run ID
+        required: true
+        type: string
+      expected_sha:
+        description: Full 40-character source commit SHA
+        required: true
+        type: string
+      version_code:
+        description: Signed bundle versionCode (0.1.1 = 2)
+        required: true
+        type: string
+      version_name:
+        description: Signed bundle versionName (0.1.1)
+        required: true
+        type: string
+      confirm_production:
+        description: Type SUBMIT_AJ_NOTES_TO_PRODUCTION to authorize submission
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: aj-notes-google-play-production
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Configure Required reviewers in this environment before the first run.
+    environment: google-play-production
+    steps:
+      - name: Require explicit confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm_production }}
+        run: |
+          if [[ "$CONFIRM" != 'SUBMIT_AJ_NOTES_TO_PRODUCTION' ]]; then
+            echo '::error::Production submission was not confirmed.'
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Verify signed build provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_RUN_ID" =~ ^[0-9]+$ ]] || { echo '::error::Invalid run ID'; exit 1; }
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Invalid commit SHA'; exit 1; }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}" |
+            jq -e --arg sha "$EXPECTED_SHA" '
+              .status == "completed" and .conclusion == "success" and
+              .event == "workflow_dispatch" and .head_branch == "main" and
+              .head_sha == $sha and .path == ".github/workflows/android-release.yml"
+            ' >/dev/null || { echo '::error::Release run does not match signing workflow'; exit 1; }
+          git fetch origin main --depth=100
+          git cat-file -e "$EXPECTED_SHA^{commit}"
+          git merge-base --is-ancestor "$EXPECTED_SHA" origin/main
+
+      - name: Download verified signed AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: stillnote-signed-release-aab
+          run-id: ${{ inputs.release_run_id }}
+          github-token: ${{ github.token }}
+          path: signed-release
+
+      - name: Validate release and run offline tests
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s mobile/scripts -p test_google_play_release.py -v
+          python3 mobile/scripts/google_play_release.py verify \
+            --aab signed-release/androidApp-release.aab \
+            --checksum signed-release/androidApp-release.aab.sha256 \
+            --manifest signed-release/release-manifest.xml \
+            --summary signed-release/release-privacy-summary.json \
+            --expected-sha "$EXPECTED_SHA" \
+            --version-code "$VERSION_CODE" \
+            --version-name "$VERSION_NAME" \
+            --notes mobile/play/release-notes/ko-KR.txt
+          jarsigner -verify signed-release/androidApp-release.aab | tee signed-release/verify-signature.log
+          grep -q 'jar verified' signed-release/verify-signature.log
+
+      - name: Install Google API authentication
+        run: python3 -m pip install 'google-auth>=2.0,<4'
+
+      - name: Commit production release via Google Play API
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          python3 mobile/scripts/google_play_release.py submit \
+            --aab signed-release/androidApp-release.aab \
+            --checksum signed-release/androidApp-release.aab.sha256 \
+            --manifest signed-release/release-manifest.xml \
+            --summary signed-release/release-privacy-summary.json \
+            --expected-sha "$EXPECTED_SHA" \
+            --version-code "$VERSION_CODE" \
+            --version-name "$VERSION_NAME" \
+            --notes mobile/play/release-notes/ko-KR.txt
