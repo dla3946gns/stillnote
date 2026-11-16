@@ -95,7 +95,7 @@ jobs:
             for attempt in $(seq 1 15); do
               if curl --fail --silent --show-error --location --max-time 15 --output "$RUNNER_TEMP/stillnote-public-page.html" "$site$suffix"; then
                 if [[ "$suffix" == '/privacy/' ]]; then
-                  if grep -Fq 'Stillnote 개인정보처리방침' "$RUNNER_TEMP/stillnote-public-page.html" &&
+                  if grep -Fq 'AJ Notes 개인정보처리방침' "$RUNNER_TEMP/stillnote-public-page.html" &&
                      grep -Fq 'Anna Johnny Works' "$RUNNER_TEMP/stillnote-public-page.html" &&
                      grep -Fq 'dla3946gns@gmail.com' "$RUNNER_TEMP/stillnote-public-page.html"; then
                     verified=true

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -138,7 +139,7 @@ class NotesUiTest {
     }
 
     private fun newDraft(title: String, body: String) {
-        compose.onNodeWithText("새 메모").performClick()
+        compose.onNodeWithContentDescription("새 메모").performClick()
         compose.onNodeWithTag("note-title").performTextInput(title)
         compose.onNodeWithTag("note-body").performTextInput(body)
         compose.waitForIdle()
@@ -192,17 +193,17 @@ class NotesUiTest {
     @Test
     fun unsavedNavigationOffersContinueEditingSaveAndDiscard() {
         newDraft("확인창 테스트", "내용")
-        compose.onNodeWithText("목록").performClick()
+        compose.onNodeWithContentDescription("목록").performClick()
         compose.onNodeWithText("변경 내용을 저장할까요?").assertIsDisplayed()
         compose.onNodeWithText("계속 편집").performClick()
         compose.onNodeWithTag("note-title").assertTextContains("확인창 테스트")
 
-        compose.onNodeWithText("목록").performClick()
+        compose.onNodeWithContentDescription("목록").performClick()
         compose.onNodeWithTag("unsaved-dialog-save").performClick()
         compose.onNodeWithText("확인창 테스트").assertExists()
 
         newDraft("버릴 초안", "임시 내용")
-        compose.onNodeWithText("목록").performClick()
+        compose.onNodeWithContentDescription("목록").performClick()
         compose.onNodeWithText("버리기").performClick()
         compose.onNodeWithText("확인창 테스트").assertExists()
         compose.onNodeWithText("버릴 초안").assertDoesNotExist()
@@ -213,7 +214,13 @@ class NotesUiTest {
         saveNew("첫 번째 메모", "여행 계획")
         saveNew("둘째 메모", "커피 기록")
 
-        compose.onNodeWithTag("notes-search").performTextInput("여행")
+        val search = compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        assertTrue(
+            "Search should stay below the note list",
+            search.fetchSemanticsNode().boundsInRoot.top >
+                compose.onNodeWithText("둘째 메모").fetchSemanticsNode().boundsInRoot.bottom
+        )
+        search.performTextInput("여행")
         compose.onNodeWithText("첫 번째 메모").assertExists()
         compose.onNodeWithText("둘째 메모").assertDoesNotExist()
 
@@ -240,11 +247,10 @@ class NotesUiTest {
         saveNew("고정할 메모", "고정 내용")
         saveNew("일반 메모", "일반 내용")
         compose.onNodeWithText("고정할 메모").performClick()
-        compose.onNodeWithText("메모 메뉴").performClick()
-        compose.onNodeWithText("메모 고정").performClick()
-        compose.onNodeWithText("목록").performClick()
+        compose.onNodeWithContentDescription("메모 고정").performClick()
+        compose.onNodeWithContentDescription("목록").performClick()
 
-        compose.onNodeWithText("고정 메모").performClick()
+        compose.onNodeWithContentDescription("고정 메모").performClick()
         compose.onNodeWithText("고정할 메모").assertIsDisplayed()
         compose.onNodeWithText("일반 메모").assertDoesNotExist()
         compose.onNodeWithText("1개").assertIsDisplayed()
@@ -254,13 +260,13 @@ class NotesUiTest {
     fun deletionRequiresConfirmationAndUndoRestoresTheNote() {
         saveNew("삭제 확인 메모", "복원할 본문")
         compose.onNodeWithText("삭제 확인 메모").performClick()
-        compose.onNodeWithText("메모 메뉴").performClick()
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
         compose.onNodeWithText("메모 삭제").performClick()
         compose.onNodeWithText("메모를 삭제할까요?").assertIsDisplayed()
         compose.onNodeWithTag("delete-dialog-cancel").performClick()
         compose.onNodeWithTag("note-title").assertTextContains("삭제 확인 메모")
 
-        compose.onNodeWithText("메모 메뉴").performClick()
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
         compose.onNodeWithText("메모 삭제").performClick()
         compose.onNodeWithText("삭제").performClick()
         compose.onNodeWithText("아직 메모가 없어요").assertIsDisplayed()
@@ -278,7 +284,7 @@ class NotesUiTest {
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         captureKeyboardLayout("keyboard-list")
 
-        compose.onNodeWithText("새 메모").performClick()
+        compose.onNodeWithContentDescription("새 메모").performClick()
         tapUntilKeyboardVisible("note-title")
         compose.onNodeWithTag("note-title").assertIsDisplayed()
         compose.onNodeWithTag("note-title").performTextInput("키보드 레이아웃")
@@ -299,7 +305,7 @@ class NotesUiTest {
 
     @Test
     fun privacyPolicyIsReadableOfflineFromNotesMenu() {
-        compose.onNodeWithText("더보기").performClick()
+        compose.onNodeWithContentDescription("더보기").performClick()
         compose.onNodeWithText("개인정보처리방침").performClick()
         compose.onNodeWithTag("privacy-policy-body").assertIsDisplayed()
         compose.onNodeWithTag("privacy-policy-body")
@@ -330,7 +336,7 @@ class NotesUiTest {
 
     @Test
     fun appRendersCorrectBackgroundInCurrentLightOrDarkMode() {
-        compose.onNodeWithText("Stillnote").assertIsDisplayed()
+        compose.onNodeWithText("AJ Notes").assertIsDisplayed()
         val night = (targetContext().resources.configuration.uiMode
             and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val screenshot = compose.onRoot().captureToImage().asAndroidBitmap()
