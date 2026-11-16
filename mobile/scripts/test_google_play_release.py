@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from google_play_release import check_existing_track, verify_release
+from google_play_release import build_production_payload, check_existing_track, verify_release
 
 SHA = "a" * 40
 MANIFEST = (
@@ -63,6 +63,14 @@ class GooglePlayReleaseTests(unittest.TestCase):
 
     def test_completed_release_allowed(self):
         self.assertEqual(len(check_existing_track({"releases": [{"status": "completed"}]})), 1)
+
+    def test_production_release_is_100_percent_rollout(self):
+        payload = build_production_payload(2, "0.1.1", "AJ Notes 0.1.1 업데이트")
+        self.assertEqual(payload["track"], "production")
+        self.assertEqual(payload["releases"][0]["status"], "completed")
+        self.assertEqual(payload["releases"][0]["versionCodes"], ["2"])
+        self.assertNotIn("userFraction", payload["releases"][0])
+        self.assertNotIn("countryTargeting", payload["releases"][0])
 
 
 if __name__ == "__main__":
