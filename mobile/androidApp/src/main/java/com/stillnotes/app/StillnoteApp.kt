@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Brush
@@ -287,7 +288,7 @@ private fun NotesList(
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Stillnote", Modifier.weight(1f), color = MaterialTheme.colorScheme.primary,
+            Text(stringResource(R.string.app_name), Modifier.weight(1f), color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             Box {
                 TextButton(onClick = { menuOpen = true }) { Text("더보기") }
@@ -483,7 +484,7 @@ private fun EmptyEditor(canCreate: Boolean, onCreate: () -> Unit) {
                     Brush.radialGradient(listOf(MaterialTheme.colorScheme.primaryContainer,
                         MaterialTheme.colorScheme.surface)), RoundedCornerShape(80.dp)
                 ), contentAlignment = Alignment.Center
-            ) { Text("Stillnote", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall) }
+            ) { Text(stringResource(R.string.app_name), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall) }
             Spacer(Modifier.height(24.dp))
             Text("작은 생각을 담는 공간", style = MaterialTheme.typography.headlineSmall)
             Text("메모를 선택하거나 새로 시작해 보세요.", Modifier.padding(top = 12.dp, bottom = 24.dp),

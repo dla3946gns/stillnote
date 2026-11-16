@@ -330,7 +330,7 @@ class NotesUiTest {
 
     @Test
     fun appRendersCorrectBackgroundInCurrentLightOrDarkMode() {
-        compose.onNodeWithText("Stillnote").assertIsDisplayed()
+        compose.onNodeWithText("AJ Notes").assertIsDisplayed()
         val night = (targetContext().resources.configuration.uiMode
             and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val screenshot = compose.onRoot().captureToImage().asAndroidBitmap()
