@@ -63,6 +63,20 @@ def check_existing_track(track):
     return releases
 
 
+def build_production_payload(version_code: int, version_name: str, notes: str):
+    """Release to 100.0% of eligible users in the existing Play Console countries."""
+    return {
+        "track": "production",
+        "releases": [{
+            "name": version_name,
+            "versionCodes": [str(version_code)],
+            # 'completed' = 100% rollout; do not set userFraction for this status.
+            "status": "completed",
+            "releaseNotes": [{"language": "ko-KR", "text": notes}],
+        }],
+    }
+
+
 def submit_release(aab: Path, version_code: int, version_name: str, notes: str):
     from google.auth.transport.requests import AuthorizedSession
     from google.oauth2 import service_account
@@ -109,15 +123,9 @@ def submit_release(aab: Path, version_code: int, version_name: str, notes: str):
     if str(bundle.get("versionCode")) != str(version_code):
         raise RuntimeError("Google Play returned an unexpected versionCode; no edit was committed.")
 
-    call("PUT", f"{edit_base}/tracks/production", json={
-        "track": "production",
-        "releases": [{
-            "name": version_name,
-            "versionCodes": [str(version_code)],
-            "status": "completed",
-            "releaseNotes": [{"language": "ko-KR", "text": notes}],
-        }],
-    })
+    call("PUT", f"{edit_base}/tracks/production", json=build_production_payload(
+        version_code, version_name, notes
+    ))
     # Default behavior cancels previously in-review changes; never permit that.
     call("POST", f"{edit_base}:commit", params={
         "changesNotSentForReview": "false",
