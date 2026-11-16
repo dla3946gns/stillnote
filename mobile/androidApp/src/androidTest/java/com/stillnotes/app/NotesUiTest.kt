@@ -213,7 +213,13 @@ class NotesUiTest {
         saveNew("첫 번째 메모", "여행 계획")
         saveNew("둘째 메모", "커피 기록")
 
-        compose.onNodeWithTag("notes-search").performTextInput("여행")
+        val search = compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        assertTrue(
+            "Search should stay below the note list",
+            search.fetchSemanticsNode().boundsInRoot.top >
+                compose.onNodeWithText("둘째 메모").fetchSemanticsNode().boundsInRoot.bottom
+        )
+        search.performTextInput("여행")
         compose.onNodeWithText("첫 번째 메모").assertExists()
         compose.onNodeWithText("둘째 메모").assertDoesNotExist()
 

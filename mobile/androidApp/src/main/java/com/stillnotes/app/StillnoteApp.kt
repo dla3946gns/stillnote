@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -313,17 +313,6 @@ private fun NotesList(
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Button(onClick = onCreate, enabled = !state.saveFailed && !state.loadFailed,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("새 메모") }
-        OutlinedTextField(
-            value = state.query,
-            onValueChange = onQuery,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("notes-search"),
-            label = { Text("메모 검색") },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            trailingIcon = {
-                if (state.query.isNotEmpty()) TextButton(onClick = { onQuery("") }) { Text("지우기") }
-            }
-        )
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically) {
             FilterChip(selected = state.pinnedOnly, onClick = { onPinnedOnly(!state.pinnedOnly) },
@@ -333,7 +322,10 @@ private fun NotesList(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (state.visibleNotes.isEmpty()) {
-            Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(if (state.query.isNotEmpty()) "검색 결과가 없어요" else if (state.pinnedOnly) "고정한 메모가 없어요" else "아직 메모가 없어요",
                     style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
@@ -368,6 +360,17 @@ private fun NotesList(
                 }
             }
         }
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = onQuery,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("notes-search"),
+            label = { Text("메모 검색") },
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            trailingIcon = {
+                if (state.query.isNotEmpty()) TextButton(onClick = { onQuery("") }) { Text("지우기") }
+            }
+        )
     }
 }
 
