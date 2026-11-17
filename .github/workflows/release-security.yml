@@ -1,0 +1,28 @@
+name: Release security
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check release action pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Require full commit SHAs in release workflows
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          for name in ("android-release", "google-play-submit", "ios-testflight"):
+              path = Path(".github/workflows") / f"{name}.yml"
+              for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  match = re.match(r"\s*(?:-\s*)?uses:\s*([^#]+)", line)
+                  if match and not re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", match[1].strip()):
+                      raise SystemExit(f"{path}:{number}: pin the action to a full commit SHA")
+          PY

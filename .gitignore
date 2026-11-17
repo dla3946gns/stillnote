@@ -13,3 +13,7 @@ node_modules/
 *.p12
 *.pfx
 *.pkcs12
+
+# Keep App Store Connect private keys and exported notes out of Git.
+*.p8
+memo-backup-*.json

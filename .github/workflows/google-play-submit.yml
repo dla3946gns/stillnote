@@ -50,7 +50,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Verify signed build provenance
         env:
@@ -72,7 +72,7 @@ jobs:
           git merge-base --is-ancestor "$EXPECTED_SHA" origin/main
 
       - name: Download verified signed AAB
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: stillnote-signed-release-aab
           run-id: ${{ inputs.release_run_id }}
