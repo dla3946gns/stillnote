@@ -1,0 +1,96 @@
+name: Update AJ Notes Google Play listing
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/google-play-listing.yml'
+      - 'mobile/play/listing-*.json'
+      - 'mobile/play/assets/**'
+      - 'mobile/scripts/google_play_listing.py'
+      - 'mobile/scripts/google_play_release.py'
+      - 'mobile/scripts/test_google_play_listing.py'
+  workflow_dispatch:
+    inputs:
+      language:
+        description: Locale configured in a mobile/play/listing-*.json file
+        required: true
+        type: string
+        default: ko-KR
+      mode:
+        description: Validate files, submit listing text and contacts, submit images, or submit both
+        required: true
+        type: choice
+        default: validate
+        options:
+          - validate
+          - listing
+          - images
+          - all
+      confirm_submission:
+        description: Type SUBMIT_AJ_NOTES_STORE_LISTING to submit changes for review
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate listing and images offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require main and explicit confirmation for submission
+        if: github.event_name == 'workflow_dispatch' && inputs.mode != 'validate'
+        env:
+          PLAY_CONFIRM: ${{ inputs.confirm_submission }}
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' || "$PLAY_CONFIRM" != 'SUBMIT_AJ_NOTES_STORE_LISTING' ]]; then
+            echo '::error::Select main and confirm submission to Google Play.'
+            exit 1
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install image validation dependency
+        run: python3 -m pip install 'Pillow>=12,<14'
+
+      - name: Check store listing files and run offline tests
+        env:
+          PLAY_LANGUAGE: ${{ inputs.language }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            python3 mobile/scripts/google_play_listing.py validate --language "$PLAY_LANGUAGE"
+          else
+            python3 mobile/scripts/google_play_listing.py validate
+          fi
+          python3 -m unittest discover -s mobile/scripts -p test_google_play_listing.py -v
+
+  submit:
+    name: Submit approved store changes
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode != 'validate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: google-play-production
+    # Serialize API edits with the existing AAB submission workflow.
+    concurrency:
+      group: aj-notes-google-play-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Google API and image dependencies
+        run: python3 -m pip install 'google-auth[requests]>=2,<4' 'Pillow>=12,<14'
+
+      - name: Submit listing edit via Google Play API
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_LANGUAGE: ${{ inputs.language }}
+          PLAY_SCOPE: ${{ inputs.mode }}
+        run: python3 mobile/scripts/google_play_listing.py submit --language "$PLAY_LANGUAGE" --scope "$PLAY_SCOPE"
