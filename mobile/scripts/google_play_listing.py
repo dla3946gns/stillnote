@@ -22,6 +22,8 @@ CONTACT_FIELDS = {"website": "contactWebsite", "contactEmail": "contactEmail",
 IMAGE_LIMITS = {"icon": 1, "featureGraphic": 1, "phoneScreenshots": 8,
                 "sevenInchScreenshots": 8, "tenInchScreenshots": 8}
 IMAGE_FORMATS = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG"}
+ICON_MAX_BYTES = 1_048_576
+PLAY_MEDIA_MAX_BYTES = 15_728_640  # Android Publisher images.upload discovery limit.
 
 
 @dataclass(frozen=True)
@@ -78,6 +80,9 @@ def read_asset(play_dir, name, image_type):
     expected_format = IMAGE_FORMATS.get(path.suffix.lower())
     if expected_format is None:
         raise ValueError(f"{name}: use PNG or JPEG.")
+    max_bytes = ICON_MAX_BYTES if image_type == "icon" else PLAY_MEDIA_MAX_BYTES
+    if path.stat().st_size > max_bytes:
+        raise ValueError(f"{name}: exceeds the {max_bytes // 1_048_576} MiB upload limit.")
 
     data = path.read_bytes()
     try:
@@ -89,8 +94,6 @@ def read_asset(play_dir, name, image_type):
             if image_type == "icon":
                 if image.format != "PNG" or image.mode != "RGBA" or image.size != (512, 512):
                     raise ValueError("icon must be a 512×512 RGBA PNG.")
-                if len(data) > 1_048_576:
-                    raise ValueError("icon exceeds 1024 KB.")
             else:
                 if image.format == "PNG" and (image.mode != "RGB" or "transparency" in image.info):
                     raise ValueError("use JPEG or RGB PNG without transparency.")

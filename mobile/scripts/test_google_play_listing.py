@@ -81,6 +81,16 @@ class GooglePlayListingTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, error):
                     load_listings(self.root)
 
+    def test_rejects_images_over_the_upload_size_limit(self):
+        for kind, mib in (("icon", 1), ("phoneScreenshots", 15)):
+            with self.subTest(kind=kind):
+                name = "assets/oversize.png"
+                with (self.root / name).open("wb") as stream:
+                    stream.truncate(mib * 1_048_576 + 1)
+                self.config(images={kind: [name]})
+                with self.assertRaisesRegex(ValueError, f"{mib} MiB upload limit"):
+                    load_listings(self.root)
+
     @patch("google_play_listing.play_request")
     def test_patches_only_changed_metadata(self, request):
         self.config(contactEmail="new@example.com", website="https://example.com")
