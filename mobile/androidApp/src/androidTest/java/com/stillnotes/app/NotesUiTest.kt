@@ -218,8 +218,7 @@ class NotesUiTest {
         )
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
-        // A restored note starts in the list; open it before testing the editor.
-        compose.onNodeWithText(existingTitle).performClick()
+        // NotesStore restores the latest saved note directly into the editor.
         val title = compose.onNodeWithTag("note-title")
         title.assertTextContains(existingTitle)
 
