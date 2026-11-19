@@ -49,3 +49,36 @@
 - 아티팩트 만료: 새로운 서명 빌드 run ID로 재시도합니다.
 
 참고: https://developers.google.com/android-publisher/api-ref/rest/v3/edits.tracks 및 https://developers.google.com/android-publisher/api-ref/rest/v3/edits/commit
+
+## 스토어 등록정보 업데이트
+
+[Update AJ Notes Google Play listing](https://github.com/dla3946gns/stillnote/actions/workflows/google-play-listing.yml) 워크플로로 `com.stillnotes.app`의 기본 스토어 등록정보를 업데이트합니다. AAB 빌드와 버전 선택 없이 실행할 수 있습니다.
+
+`mobile/play/listing-ko.json`에서 앱 이름, 짧은 설명, 자세한 설명을 관리합니다. YouTube 홍보 영상은 `video`에 URL을 지정합니다. `website`, `contactEmail`, `contactPhone`은 앱 전체의 지원 연락처에 반영되므로 기본 한국어 파일에서 관리합니다. 번역을 추가할 때는 `mobile/play/listing-en-US.json`처럼 별도 파일을 만들고 `language`에 해당 Play 언어 코드를 지정합니다. 개인정보처리방침 URL, 개발자 이름, 카테고리, 데이터 보안과 콘텐츠 등급은 Play Console에서 관리합니다.
+
+### 스토어 이미지 준비
+
+검토한 PNG/JPEG를 `mobile/play/assets/`에 넣고 해당 언어 파일의 `images`에 `mobile/play/` 기준 경로를 지정합니다. 실제 Android 화면 캡처 후보는 기존 CI의 `stillnote-play-listing-assets` 아티팩트에서 받을 수 있습니다. [이미지 생성 안내](PLAY_ASSETS.md)
+
+```json
+{
+  "images": {
+    "icon": ["assets/ko-KR/icon.png"],
+    "featureGraphic": ["assets/ko-KR/feature.jpg"],
+    "phoneScreenshots": ["assets/ko-KR/phone-01.png", "assets/ko-KR/phone-02.png"]
+  }
+}
+```
+
+태블릿은 `sevenInchScreenshots`와 `tenInchScreenshots`를 지원합니다. 파일당 업로드 한도는 아이콘 1 MiB, 나머지 이미지 15 MiB입니다. 스크린샷 배열은 해당 기기 유형에 표시할 이미지의 전체 순서입니다. 기존 이미지 중 순서를 유지할 수 있는 파일은 SHA-256으로 비교해 재사용합니다. 배열에 포함하지 않은 기존 이미지는 해당 유형에서 제거되므로, 유지할 파일도 배열에 넣으세요. 갱신할 이미지 유형만 키로 지정합니다.
+
+한국어 휴대폰 스크린샷은 `mobile/play/assets/ko-KR/`에서 관리합니다. `listing-ko.json`에 라이트 모드 목록·편집 화면, 다크 모드 목록·편집 화면 순으로 등록되어 있습니다.
+
+### 실행 및 승인
+
+1. PR 또는 `Run workflow`의 기본 `validate` 모드에서 문구와 이미지 규격을 확인합니다.
+2. Play Console **게시 개요**에서 심사 중인 항목과 전송 대기 항목을 확인합니다. API 커밋 시 전송 대기 중이던 다른 변경사항도 함께 심사에 제출될 수 있습니다.
+3. `main`에서 `Run workflow`를 열고 `language`에 `ko-KR` 또는 등록한 언어를 선택합니다. `mode`는 `listing`(문구·연락처), `images`(이미지), `all`(둘 다) 중 선택하고 `confirm_submission`에 `SUBMIT_AJ_NOTES_STORE_LISTING`을 입력합니다. 이 확인은 선택한 등록정보의 공개 검토가 끝났다는 뜻입니다.
+4. 기존 `google-play-production` 환경을 재사용합니다. 환경에 Required reviewers를 설정해 제출 작업을 승인합니다. `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`의 서비스 계정에 AJ Notes 앱의 **스토어 등록정보 관리(Manage store presence)** 권한을 부여합니다. [Play Console 권한 안내](https://support.google.com/googleplay/android-developer/answer/9844686)
+
+워크플로는 적용할 변경사항이 있을 때 한 번의 Play edit을 검증하고 커밋합니다. 이미 심사 중인 변경사항이 있으면 커밋이 거부됩니다. 커밋에 성공하면 **게시 개요**에서 심사 및 관리형 게시 상태를 확인합니다. [Google Play edit 커밋](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/commit)

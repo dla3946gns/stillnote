@@ -9,5 +9,13 @@
   "privacyPolicy": "https://dla3946gns.github.io/stillnote/privacy/",
   "categoryProposal": "PRODUCTIVITY",
   "appId": "com.stillnotes.app",
-  "reviewStatus": "draft-owner-and-policy-review-required"
+  "reviewStatus": "draft-owner-and-policy-review-required",
+  "images": {
+    "phoneScreenshots": [
+      "assets/ko-KR/store-list-light.png",
+      "assets/ko-KR/store-editor-light.png",
+      "assets/ko-KR/store-list-dark.png",
+      "assets/ko-KR/store-editor-dark.png"
+    ]
+  }
 }
