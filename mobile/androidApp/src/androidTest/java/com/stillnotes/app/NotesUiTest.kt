@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -25,12 +26,12 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
 import org.junit.runner.RunWith
 
 /**
@@ -41,9 +42,18 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class NotesUiTest {
-    @get:Rule val compose = createEmptyComposeRule()
-
     private lateinit var scenario: ActivityScenario<MainActivity>
+
+    // Compose captures failures before the outer rule closes the Activity.
+    @get:Rule(order = 0)
+    val activityCleanup = object : ExternalResource() {
+        override fun after() {
+            if (::scenario.isInitialized) scenario.close()
+        }
+    }
+
+    @get:Rule(order = 1)
+    val compose = createEmptyComposeRule()
 
     @Before
     fun startClean() {
@@ -52,11 +62,6 @@ class NotesUiTest {
         check(File(directory, "stillnote-notes.json.tmp").let { !it.exists() || it.delete() })
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
-    }
-
-    @After
-    fun closeActivity() {
-        if (::scenario.isInitialized) scenario.close()
     }
 
 
@@ -171,6 +176,60 @@ class NotesUiTest {
         compose.onNodeWithTag("note-body").assertExists()
         compose.onNodeWithTag("note-title").assertTextContains("재실행 테스트")
         compose.onNodeWithTag("note-body").assertTextContains("다시 열어도 남는 본문")
+    }
+
+    @Test
+    fun bodyUndoAndRedoAreSavedAndDiscardDoesNotResurrectEdits() {
+        saveNew("편집 이력 테스트", "원본 본문")
+        compose.onNodeWithText("편집 이력 테스트").performClick()
+        val body = compose.onNodeWithTag("note-body")
+
+        body.performTextReplacement("복구할 문단")
+        body.performTextReplacement("남은 문장")
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").performClick()
+        body.assertTextContains("복구할 문단")
+
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 다시 실행").performClick()
+        body.assertTextContains("남은 문장")
+
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").performClick()
+        saveDraft()
+        compose.onNodeWithText("편집 이력 테스트").performClick()
+        body.assertTextContains("복구할 문단")
+
+        body.performTextReplacement("버릴 편집")
+        compose.onNodeWithContentDescription("메모 고정").performClick()
+        compose.onNodeWithText("버리기").performClick()
+        body.assertTextContains("복구할 문단")
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").assertIsNotEnabled()
+        compose.onNodeWithText("본문 다시 실행").assertIsNotEnabled()
+    }
+
+    @Test
+    fun titleLimitStillLetsUsersShortenAnExistingLongTitle() {
+        val existingTitle = "가".repeat(122)
+        scenario.close()
+        File(targetContext().filesDir, "stillnote-notes.json").writeText(
+            """[{"id":"legacy-title","title":"$existingTitle","body":"","createdAt":1,"updatedAt":1}]"""
+        )
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        val title = compose.onNodeWithTag("note-title")
+        title.assertTextContains(existingTitle)
+
+        val shorterTitle = "가".repeat(121)
+        title.performTextReplacement(shorterTitle)
+        title.assertTextContains(shorterTitle)
+        title.performTextReplacement("나".repeat(121))
+        title.assertTextContains(shorterTitle)
+
+        val allowedTitle = "가".repeat(120)
+        title.performTextReplacement(allowedTitle)
+        title.performTextReplacement("가".repeat(121))
+        title.assertTextContains(allowedTitle)
     }
 
     @Test
