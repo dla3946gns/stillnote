@@ -179,6 +179,23 @@ class NotesUiTest {
     }
 
     @Test
+    fun koreanEmojiAndMultilineBodySurviveActivityRestart() {
+        // This checks committed Unicode text; real IME composing is separate device QA.
+        val title = "한글 제목 🌿"
+        val body = "첫 문장입니다.\n두 번째 문단 😊\n마지막 줄"
+
+        newDraft(title, body)
+        saveDraft()
+        scenario.close()
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+
+        // NotesStore automatically reopens the most recently saved note.
+        compose.onNodeWithTag("note-title").assertTextContains(title)
+        compose.onNodeWithTag("note-body").assertTextContains(body)
+    }
+
+    @Test
     fun bodyUndoAndRedoAreSavedAndDiscardDoesNotResurrectEdits() {
         saveNew("편집 이력 테스트", "원본 본문")
         compose.onNodeWithText("편집 이력 테스트").performClick()
