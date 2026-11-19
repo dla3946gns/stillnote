@@ -217,6 +217,9 @@ class NotesUiTest {
             """[{"id":"legacy-title","title":"$existingTitle","body":"","createdAt":1,"updatedAt":1}]"""
         )
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+        // A restored note starts in the list; open it before testing the editor.
+        compose.onNodeWithText(existingTitle).performClick()
         val title = compose.onNodeWithTag("note-title")
         title.assertTextContains(existingTitle)
 
