@@ -16,6 +16,13 @@ workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
 adb install "$baseline_apk"
+baseline_dump="$(adb shell dumpsys package "$package")"
+if [[ "$baseline_dump" =~ versionCode=([0-9]+) ]]; then
+  baseline_code="${BASH_REMATCH[1]}"
+else
+  echo "::error::Could not read installed baseline versionCode"
+  exit 1
+fi
 adb install "$baseline_tests"
 echo "::group::Create a saved note with the previous main APK"
 adb shell am instrument -w \
@@ -46,13 +53,21 @@ print("Baseline saved note and timestamps confirmed.")
 PY
 
 echo "::group::Upgrade the same package without uninstalling"
-# -r preserves package-private data. The candidate's versionCode is overridden
-# to 2 at build time; the source-controlled version still remains 1.
+# -r preserves package-private data. The candidate's versionCode is increased
+# only in CI, without changing the production versionCode in gradle.properties.
 adb install -r "$candidate_apk"
-adb shell dumpsys package "$package" | grep -m 1 'versionCode=2' || {
-  echo "::error::Candidate versionCode was not installed as version 2"
+candidate_dump="$(adb shell dumpsys package "$package")"
+if [[ "$candidate_dump" =~ versionCode=([0-9]+) ]]; then
+  candidate_code="${BASH_REMATCH[1]}"
+else
+  echo "::error::Could not read installed candidate versionCode"
   exit 1
-}
+fi
+if (( candidate_code != baseline_code + 1 )); then
+  echo "::error::Upgrade must increase versionCode by exactly one: $baseline_code -> $candidate_code"
+  exit 1
+fi
+echo "Validated in-place upgrade versionCode: $baseline_code -> $candidate_code"
 adb shell am start -W -n "$package/.MainActivity"
 adb shell am force-stop "$package"
 adb exec-out run-as "$package" cat files/stillnote-notes.json > "$workdir/after.json"
