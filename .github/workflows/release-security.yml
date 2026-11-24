@@ -19,7 +19,7 @@ jobs:
           import re
           from pathlib import Path
 
-          for name in ("android-release", "google-play-submit", "ios-testflight"):
+          for name in ("android-release", "google-play-submit", "ios-testflight", "ios-app-store"):
               path = Path(".github/workflows") / f"{name}.yml"
               for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                   match = re.match(r"\s*(?:-\s*)?uses:\s*([^#]+)", line)

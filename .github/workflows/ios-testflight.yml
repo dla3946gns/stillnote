@@ -11,6 +11,13 @@ on:
         description: Restrict uploaded build to TestFlight internal testing
         type: boolean
         default: true
+      submit_review:
+        description: Upload an App Store eligible build and submit this exact build to App Review
+        type: boolean
+        default: false
+      marketing_version:
+        description: Optional iOS version override (defaults to the Xcode project version)
+        type: string
 
 permissions:
   contents: read
@@ -25,6 +32,9 @@ jobs:
     environment: ios-testflight
     runs-on: xcode-27
     timeout-minutes: 45
+    outputs:
+      version: ${{ steps.archive.outputs.version }}
+      build_number: ${{ steps.archive.outputs.build_number }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -34,10 +44,18 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Archive AJ Notes for iPhone
+        id: archive
         shell: bash
+        env:
+          STORE_VERSION: ${{ inputs.marketing_version }}
         run: |
           xcodebuild -version
           chmod +x mobile/gradlew
+          settings=()
+          if [[ -n "$STORE_VERSION" ]]; then
+            [[ "$STORE_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]
+            settings+=("MARKETING_VERSION=$STORE_VERSION")
+          fi
           xcodebuild archive \
             -project mobile/iosApp/Stillnote.xcodeproj \
             -scheme Stillnote \
@@ -46,16 +64,21 @@ jobs:
             -archivePath "$RUNNER_TEMP/AJNotes.xcarchive" \
             DEVELOPMENT_TEAM=R8P3TN6FZS \
             CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT"
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" "${settings[@]}"
           info="$RUNNER_TEMP/AJNotes.xcarchive/Products/Applications/Stillnote.app/Info.plist"
           [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$info")" == com.stillnotes.app ]]
-          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")" == 1.0 ]]
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")
+          build=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$info")
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+){0,2}$ && "$version" == "${STORE_VERSION:-$version}" ]]
+          [[ "$build" == "$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_number=$build" >> "$GITHUB_OUTPUT"
           /usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon' "$info"
       - name: Cloud-sign and upload to App Store Connect
-        if: inputs.upload
+        if: inputs.upload || inputs.submit_review
         shell: bash
         env:
-          TESTFLIGHT_INTERNAL_ONLY: ${{ inputs.internal_only }}
+          TESTFLIGHT_INTERNAL_ONLY: ${{ !inputs.submit_review && inputs.internal_only }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
@@ -100,3 +123,11 @@ jobs:
             -authenticationKeyPath "$key_path" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+  app-review:
+    needs: testflight
+    if: inputs.submit_review && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ios-app-store.yml
+    with:
+      version: ${{ needs.testflight.outputs.version }}
+      build_number: ${{ needs.testflight.outputs.build_number }}
