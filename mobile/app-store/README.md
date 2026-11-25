@@ -46,7 +46,7 @@ TestFlight에 이미 올린 빌드는 **AJ Notes App Store**에서 `submit-revie
 
 ## 인증과 검증
 
-기존 GitHub 환경 `ios-testflight`의 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`를 사용합니다. 빌드 업로드에는 Developer 역할도 사용할 수 있고, 심사 제출에는 App Manager 이상 권한이 필요합니다. 새 빌드를 만드는 단계는 기존 Xcode 러너와 클라우드 서명을 사용합니다. 등록정보·이미지·심사 API 단계는 Ubuntu에서 SHA-256으로 고정한 `asc` 7.4.0을 사용합니다.
+기존 GitHub 환경 `ios-testflight`의 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`를 사용합니다. 업로드와 심사 제출은 각각 직접 정의된 배포 job에서 기존 환경 승인을 받습니다. 재사용 workflow 호출에서는 비밀값이 빈 값으로 전달된 이력이 있어 사용하지 않습니다. 심사 job은 세 비밀값의 존재 여부를 확인하고 권한 0600의 임시 p8 파일로 CLI 인증을 구성한 뒤 앱 조회로 인증을 검증합니다. 파일은 실행 종료 시 삭제하며 로그에 출력하거나 아티팩트로 저장하지 않습니다. 빌드 업로드에는 Developer 역할도 사용할 수 있고, 심사 제출에는 App Manager 이상 권한이 필요합니다. 새 빌드를 만드는 단계는 기존 Xcode 러너와 클라우드 서명을 사용합니다. 등록정보·이미지·심사 API 단계는 Ubuntu에서 SHA-256으로 고정한 `asc` 7.4.0을 사용합니다.
 
 PR에서는 Apple 인증 없이 설정과 단위 테스트를 검사합니다. 로컬에서 같은 검사를 실행할 수 있습니다.
 
