@@ -49,7 +49,7 @@ jobs:
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT"
           info="$RUNNER_TEMP/AJNotes.xcarchive/Products/Applications/Stillnote.app/Info.plist"
           [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$info")" == com.stillnotes.app ]]
-          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")" == 1.0 ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")" == 1.0.1 ]]
           /usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon' "$info"
       - name: Cloud-sign and upload to App Store Connect
         if: inputs.upload
