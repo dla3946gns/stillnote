@@ -181,8 +181,14 @@ jobs:
         run: bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
       - name: Build candidate APK with higher versionCode
         working-directory: candidate/mobile
-        # Override only inside this verification, never bump the production code.
-        run: bash ./gradlew :androidApp:assembleDebug -PstillnoteVersionCode=2 --stacktrace
+        # Exercise a real version upgrade without changing production metadata.
+        run: |
+          set -euo pipefail
+          base_code=$(sed -n 's/^stillnoteVersionCode=//p' ../../baseline/mobile/gradle.properties)
+          candidate_code=$(sed -n 's/^stillnoteVersionCode=//p' gradle.properties)
+          [[ "$base_code" =~ ^[0-9]+$ && "$candidate_code" =~ ^[0-9]+$ ]]
+          if (( candidate_code <= base_code )); then candidate_code=$((base_code + 1)); fi
+          bash ./gradlew :androidApp:assembleDebug -PstillnoteVersionCode="$candidate_code" --stacktrace
       - name: Enable hardware-accelerated Android emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
