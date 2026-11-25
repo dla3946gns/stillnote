@@ -26,9 +26,6 @@ jobs:
                   if not match:
                       continue
                   action = match[1].strip()
-                  # Local reusable workflows run from the caller\'s commit; no @ref is allowed.
-                  if name == "ios-testflight" and action == "./.github/workflows/ios-app-store.yml":
-                      continue
                   if not re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", action):
                       raise SystemExit(f"{path}:{number}: pin the action to a full commit SHA")
           PY

@@ -7,6 +7,7 @@ on:
       - '.github/workflows/ios-testflight.yml'
       - 'mobile/app-store/**'
       - 'mobile/scripts/app_store*.py'
+      - 'mobile/scripts/app_store_ci.sh'
       - 'mobile/scripts/test_app_store*.py'
   workflow_dispatch:
     inputs:
@@ -30,15 +31,6 @@ on:
       build_number:
         description: Exact processed or processing TestFlight build number for submit-review
         type: string
-  workflow_call:
-    inputs:
-      version:
-        type: string
-        required: true
-      build_number:
-        type: string
-        required: true
-
 permissions:
   contents: read
 
@@ -80,13 +72,11 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-          ASC_BYPASS_KEYCHAIN: '1'
           ASC_READ_ONLY: ${{ inputs.mode == 'status' && '1' || '' }}
-          STORE_MODE: ${{ inputs.mode || 'submit-review' }}
+          STORE_MODE: ${{ inputs.mode }}
           STORE_VERSION: ${{ inputs.version }}
           STORE_LOCALE: ${{ inputs.locale || 'ko' }}
           STORE_GROUP: ${{ inputs.group }}
           STORE_BUILD: ${{ inputs.build_number }}
-        run: |
-          python3 mobile/scripts/app_store.py "$STORE_MODE" --version "$STORE_VERSION" \
-            --locale "$STORE_LOCALE" --group "$STORE_GROUP" --build-number "$STORE_BUILD"
+        shell: bash
+        run: bash mobile/scripts/app_store_ci.sh
