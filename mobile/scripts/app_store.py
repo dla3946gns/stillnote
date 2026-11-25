@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from app_store_screenshots import placements, sync_screenshots
 
@@ -107,6 +107,42 @@ def version_info(version):
                "--include", "build")
 
 
+def ensure_review_version(version):
+    # Only create after a successful, exact filtered lookup. Authentication or
+    # network errors must not be mistaken for a missing version.
+    query = urlencode({"filter[platform]": "IOS", "filter[versionString]": version, "limit": 2})
+    response = asc("api", "GET", f"/v1/apps/{APP}/appStoreVersions?{query}")
+    rows = response["data"]
+    if response.get("links", {}).get("next") or len(rows) > 1:
+        raise ValueError("Ambiguous App Store version lookup")
+    if rows:
+        row = rows[0]
+        if row["attributes"]["platform"] != "IOS" or row["attributes"]["versionString"] != version:
+            raise ValueError("Apple returned a different version")
+        return version_info(version)
+    # New versions are manually released after review; existing settings are not changed.
+    created = asc("api", "POST", "/v1/appStoreVersions", "--confirm", body={
+        "data": {"type": "appStoreVersions",
+                 "attributes": {"platform": "IOS", "versionString": version, "releaseType": "MANUAL"},
+                 "relationships": {"app": {"data": {"type": "apps", "id": APP}}}}
+    })["data"]
+    print(f"Created iOS {version} for manual release", flush=True)
+    record = version_info(version)
+    if record["data"]["id"] != created["id"]:
+        raise ValueError("New version ID does not match Apple's lookup")
+    return record
+
+
+def prepare_review_notes(version, locale, record, state):
+    # Never edit a version that is already in review or has been released.
+    path = ROOT / version / locale / "listing.json"
+    if state not in EDITABLE or not path.is_file():
+        return
+    _, info, _ = read_config(path)
+    if "whatsNew" in info:
+        patch_metadata(localization(record["id"], locale), {"whatsNew": info["whatsNew"]})
+
+
 def submit_review(version, number, version_id):
     if not re.fullmatch(VERSION, number):
         raise ValueError("Enter the exact TestFlight build number (CFBundleVersion)")
@@ -138,7 +174,9 @@ def submit_review(version, number, version_id):
 def run(mode, version, locale, group, number):
     if not re.fullmatch(VERSION, version) or not re.fullmatch(LOCALE, locale):
         raise ValueError("Enter a numeric iOS version and an App Store locale (e.g. ko)")
-    response = version_info(version)
+    if mode == "submit-review" and not re.fullmatch(VERSION, number):
+        raise ValueError("Enter the exact TestFlight build number (CFBundleVersion)")
+    response = ensure_review_version(version) if mode == "submit-review" else version_info(version)
     record = response["data"]
     attributes = record["attributes"]
     if attributes["platform"] != "IOS" or attributes["versionString"] != version:
@@ -146,6 +184,7 @@ def run(mode, version, locale, group, number):
     state = attributes.get("appVersionState") or attributes["appStoreState"]
     print(f"AJ Notes iOS {version}: {state}", flush=True)
     if mode == "submit-review":
+        prepare_review_notes(version, locale, record, state)
         return submit_review(version, number, record["id"])
     if mode == "status":
         build = next((r for r in response.get("included", []) if r["type"] == "builds"), None)

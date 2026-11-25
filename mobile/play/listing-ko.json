@@ -16,6 +16,9 @@
       "assets/ko-KR/store-editor-light.png",
       "assets/ko-KR/store-list-dark.png",
       "assets/ko-KR/store-editor-dark.png"
+    ],
+    "icon": [
+      "assets/aj-notes-play-icon-512.png"
     ]
   }
 }

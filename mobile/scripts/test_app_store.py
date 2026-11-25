@@ -119,6 +119,46 @@ class StoreTests(unittest.TestCase):
                 store.run("append-screenshots", "1.0", "ko", "IPHONE", "")
             sync.assert_not_called()
 
+    def test_missing_review_version_is_created_with_manual_release(self):
+        record = {"data": {"id": "new"}}
+        with patch.object(store, "asc", side_effect=[{"data": []}, record]) as api, \
+             patch.object(store, "version_info", return_value=record):
+            self.assertEqual(store.ensure_review_version("1.0.1"), record)
+        self.assertIn("filter%5BversionString%5D=1.0.1", api.call_args_list[0].args[2])
+        self.assertEqual(api.call_args.args[:3], ("api", "POST", "/v1/appStoreVersions"))
+        self.assertEqual(api.call_args.kwargs["body"]["data"]["attributes"]["releaseType"], "MANUAL")
+
+    def test_existing_review_version_is_not_created_again(self):
+        row = {"id": "v1", "attributes": {"platform": "IOS", "versionString": "1.0.1"}}
+        with patch.object(store, "asc", return_value={"data": [row]}) as api, \
+             patch.object(store, "version_info", return_value={"data": row}):
+            store.ensure_review_version("1.0.1")
+        api.assert_called_once()
+
+    def test_version_lookup_error_does_not_create_version(self):
+        with patch.object(store, "asc", side_effect=subprocess.CalledProcessError(1, ["asc"])) as api:
+            with self.assertRaises(subprocess.CalledProcessError):
+                store.ensure_review_version("1.0.1")
+        api.assert_called_once()
+
+    def test_invalid_build_number_does_not_create_version(self):
+        with patch.object(store, "ensure_review_version") as ensure:
+            with self.assertRaisesRegex(ValueError, "exact TestFlight"):
+                store.run("submit-review", "1.0.1", "ko", "", "")
+        ensure.assert_not_called()
+
+    def test_review_notes_only_patch_whats_new_on_editable_version(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory, "1.0.1", "ko", "listing.json")
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps({"versionInfo": {"description": "keep", "whatsNew": "new icon"}}))
+            with patch.object(store, "ROOT", Path(directory)), \
+                 patch.object(store, "localization", return_value={"id": "ko"}), \
+                 patch.object(store, "patch_metadata") as update:
+                store.prepare_review_notes("1.0.1", "ko", {"id": "v1"}, "PREPARE_FOR_SUBMISSION")
+                store.prepare_review_notes("1.0.1", "ko", {"id": "v1"}, "WAITING_FOR_REVIEW")
+            update.assert_called_once_with({"id": "ko"}, {"whatsNew": "new icon"})
+
     def test_review_uses_same_version_and_build_after_processing(self):
         preview = {"buildId": "build-4", "reviewItems": [{"type": "appStoreVersions", "id": "v1"}]}
         attached = {"data": {"relationships": {"build": {"data": {"id": "build-4"}}}}}
