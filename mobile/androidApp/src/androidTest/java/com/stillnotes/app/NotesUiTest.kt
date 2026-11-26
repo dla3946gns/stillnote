@@ -9,7 +9,17 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
+import androidx.compose.ui.platform.PlatformTextInputSession
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.PlatformTextInputMethodTestOverride
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.awaitCancellation
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -180,39 +190,80 @@ class NotesUiTest {
         compose.onNodeWithTag("note-body").assertTextContains("다시 열어도 남는 본문")
     }
 
+    @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
     @Test
     fun koreanCompositionEmojiAndMultilineBodySurviveActivityRestart() {
         val title = "한글 제목 🌿"
         val rest = "글 본문입니다.\n두 번째 문단 😊\n마지막 줄"
         val body = compose.onNodeWithTag("note-body")
+        var connection: InputConnection? = null
 
+        // Use Compose's test session override to avoid racing the installed
+        // keyboard with a second, manually created View input connection.
+        // Exercise the real editor and storage, not a standalone text field.
+        scenario.onActivity { activity ->
+            activity.setContent {
+                val view = LocalView.current
+                val handler = remember(view) {
+                    object : PlatformTextInputSession {
+                        override val view = view
+                        override suspend fun startInputMethod(
+                            request: PlatformTextInputMethodRequest
+                        ): Nothing {
+                            connection = request.createInputConnection(EditorInfo())
+                            try {
+                                awaitCancellation()
+                            } finally {
+                                connection = null
+                            }
+                        }
+                    }
+                }
+                StillnoteTheme {
+                    PlatformTextInputMethodTestOverride(sessionHandler = handler) {
+                        StillnoteApp(
+                            model = viewModel(),
+                            onCopy = {},
+                            onShare = {},
+                            onExportText = {},
+                            onExportBackup = {},
+                            onImportBackup = {}
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
         compose.onNodeWithContentDescription("새 메모").performClick()
         compose.onNodeWithTag("note-title").performTextInput(title)
-        tapUntilKeyboardVisible("note-body")
-        lateinit var input: InputConnection
-        scenario.onActivity { activity ->
-            input = checkNotNull(activity.currentFocus?.onCreateInputConnection(EditorInfo()))
-        }
-        // Send the editor the same composing operations a Korean IME uses.
-        // Let Compose render each update so a lost composing region is observable.
+        body.performClick()
+        compose.waitForIdle()
+        val input = compose.runOnIdle { checkNotNull(connection) }
+
+        // Check each complete composing replacement after recomposition.
         for (syllable in listOf("ㅎ", "하", "한")) {
-            scenario.onActivity { assertTrue(input.setComposingText(syllable, 1)) }
-            body.assertTextContains(syllable)
+            compose.runOnIdle {
+                assertTrue("Text input session changed mid-composition", connection === input)
+                assertTrue(input.setComposingText(syllable, 1))
+            }
+            body.assertTextContains(syllable, substring = false)
         }
-        scenario.onActivity {
+        compose.runOnIdle {
+            assertTrue(connection === input)
             assertTrue(input.finishComposingText())
             assertTrue(input.commitText(rest, 1))
         }
-        body.assertTextContains("한" + rest)
+        body.assertTextContains("한" + rest, substring = false)
 
         saveDraft()
         scenario.close()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
 
-        // NotesStore automatically reopens the most recently saved note.
+        // Reopen the persisted note in the normal activity with the real IME.
+        compose.onNodeWithText(title).performClick()
         compose.onNodeWithTag("note-title").assertTextContains(title)
-        body.assertTextContains("한" + rest)
+        body.assertTextContains("한" + rest, substring = false)
     }
 
     @Test
