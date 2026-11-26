@@ -203,10 +203,10 @@ class NotesUiTest {
         // Exercise the real editor and storage, not a standalone text field.
         scenario.onActivity { activity ->
             activity.setContent {
-                val view = LocalView.current
-                val handler = remember(view) {
+                val hostView = LocalView.current
+                val handler = remember(hostView) {
                     object : PlatformTextInputSession {
-                        override val view = view
+                        override val view = hostView
                         override suspend fun startInputMethod(
                             request: PlatformTextInputMethodRequest
                         ): Nothing {
