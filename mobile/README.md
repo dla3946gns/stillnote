@@ -30,23 +30,23 @@ mobile/
 
 ## 고정한 개발 버전
 
-2026-10-11에 확인한 안정판과 KMP 호환 범위를 기준으로 선택했습니다.
+Compose와 Material 3는 2026-11-18 안정판 BOM을 사용합니다.
 
 | 항목 | 버전 |
 |---|---|
 | Kotlin / KMP / Compose compiler | 2.4.21 |
 | Android Gradle Plugin | 9.3.1 |
 | Gradle wrapper | 9.7.0 |
-| Compose BOM | 2026.09.00 |
-| Compose UI / Foundation | 1.12.1 |
-| Material 3 | 1.4.0 |
+| Compose BOM | 2026.11.01 |
+| Compose UI / Foundation | 1.13.0 |
+| Material 3 | 1.5.0 |
 | Activity Compose | 1.13.0 |
 | Lifecycle ViewModel | 2.11.0 |
 | kotlinx.serialization | 1.11.0 |
-| Android 최소 지원 / compile·target SDK | Android 8.0(API 26) / API 37 |
+| Android 최소 지원 / 앱 compile SDK / target SDK | Android 8.0(API 26) / 37.1 / 37 |
 | iOS 최소 지원 / Swift 언어 모드 | iOS 17 / Swift 6 |
 
-버전은 `gradle/libs.versions.toml`에서 관리합니다. Material 3 Expressive의 최신 라이브러리는 아직 베타이므로 이 첫 구현에는 안정판 Material 3를 사용합니다. 최신 iOS에서 기본 SwiftUI 탐색·도구 모음이 시스템 디자인을 사용하며, 메모 작성 영역에는 불투명한 아이보리 배경을 적용합니다.
+버전은 `gradle/libs.versions.toml`에서 관리합니다. 최신 iOS에서 기본 SwiftUI 탐색·도구 모음이 시스템 디자인을 사용하며, 메모 작성 영역에는 불투명한 아이보리 배경을 적용합니다.
 
 AGP의 최신 버전과 별개로 KMP 문서의 명시된 호환 범위인 9.3.1을 선택했습니다. Kotlin 문서의 Xcode 표는 26.4를 명시하므로 Xcode 27 조합은 Mac에서 빌드 확인이 필요합니다.
 
@@ -56,7 +56,7 @@ AGP의 최신 버전과 별개로 KMP 문서의 명시된 호환 범위인 9.3.1
 
 1. Android Studio에서 이 `mobile` 폴더를 엽니다.
 2. Gradle JDK는 JDK 17로 설정합니다.
-3. SDK Manager에서 Android SDK Platform 37.0, Build Tools 36.0.0, Platform Tools를 설치합니다.
+3. SDK Manager에서 Android SDK Platform 37.0과 37.1, Build Tools 36.0.0, Platform Tools를 설치합니다.
 4. Gradle 동기화 후 `androidApp`을 기기나 에뮬레이터에서 실행합니다.
 
 명령줄에서는 `JAVA_HOME`과 `ANDROID_HOME`을 설정하거나 SDK 경로를 로컬 `local.properties`의 `sdk.dir`에 지정한 뒤 실행합니다.

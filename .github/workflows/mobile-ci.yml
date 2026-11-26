@@ -37,7 +37,7 @@ jobs:
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER" || { echo 'Android SDK command-line tools missing'; exit 1; }
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
       - name: Verify offline and public privacy policy match
         run: python3 scripts/verify-privacy-policy.py
       - name: Validate Google Play listing metadata
@@ -175,7 +175,7 @@ jobs:
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
       - name: Build existing-main APK and its UI test APK
         working-directory: baseline/mobile
         run: bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
@@ -235,7 +235,7 @@ jobs:
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "build-tools;36.0.0"
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
       - name: Run Compose UI journeys on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -258,7 +258,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload emulator test reports and theme captures
+      - name: Upload emulator test reports, theme captures, and failure diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -267,4 +267,5 @@ jobs:
             mobile/androidApp/build/outputs/androidTest-results/connected/
             mobile/androidApp/build/reports/androidTests/connected/
             mobile/androidApp/build/qa-screenshots/
+            mobile/androidApp/build/qa-failure-artifacts/
           if-no-files-found: warn

@@ -5,11 +5,24 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.view.WindowInsets
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
+import androidx.compose.ui.platform.PlatformTextInputSession
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.PlatformTextInputMethodTestOverride
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.awaitCancellation
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -25,12 +38,12 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
 import org.junit.runner.RunWith
 
 /**
@@ -41,9 +54,18 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class NotesUiTest {
-    @get:Rule val compose = createEmptyComposeRule()
-
     private lateinit var scenario: ActivityScenario<MainActivity>
+
+    // Compose captures failures before the outer rule closes the Activity.
+    @get:Rule(order = 0)
+    val activityCleanup = object : ExternalResource() {
+        override fun after() {
+            if (::scenario.isInitialized) scenario.close()
+        }
+    }
+
+    @get:Rule(order = 1)
+    val compose = createEmptyComposeRule()
 
     @Before
     fun startClean() {
@@ -52,11 +74,6 @@ class NotesUiTest {
         check(File(directory, "stillnote-notes.json.tmp").let { !it.exists() || it.delete() })
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
-    }
-
-    @After
-    fun closeActivity() {
-        if (::scenario.isInitialized) scenario.close()
     }
 
 
@@ -171,6 +188,138 @@ class NotesUiTest {
         compose.onNodeWithTag("note-body").assertExists()
         compose.onNodeWithTag("note-title").assertTextContains("재실행 테스트")
         compose.onNodeWithTag("note-body").assertTextContains("다시 열어도 남는 본문")
+    }
+
+    @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
+    @Test
+    fun koreanCompositionEmojiAndMultilineBodySurviveActivityRestart() {
+        val title = "한글 제목 🌿"
+        val rest = "글 본문입니다.\n두 번째 문단 😊\n마지막 줄"
+        val body = compose.onNodeWithTag("note-body")
+        var connection: InputConnection? = null
+
+        // Use Compose's test session override to avoid racing the installed
+        // keyboard with a second, manually created View input connection.
+        // Exercise the real editor and storage, not a standalone text field.
+        scenario.onActivity { activity ->
+            activity.setContent {
+                val hostView = LocalView.current
+                val handler = remember(hostView) {
+                    object : PlatformTextInputSession {
+                        override val view = hostView
+                        override suspend fun startInputMethod(
+                            request: PlatformTextInputMethodRequest
+                        ): Nothing {
+                            connection = request.createInputConnection(EditorInfo())
+                            try {
+                                awaitCancellation()
+                            } finally {
+                                connection = null
+                            }
+                        }
+                    }
+                }
+                StillnoteTheme {
+                    PlatformTextInputMethodTestOverride(sessionHandler = handler) {
+                        StillnoteApp(
+                            model = viewModel(),
+                            onCopy = {},
+                            onShare = {},
+                            onExportText = {},
+                            onExportBackup = {},
+                            onImportBackup = {}
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("새 메모").performClick()
+        compose.onNodeWithTag("note-title").performTextInput(title)
+        body.performClick()
+        compose.waitForIdle()
+        val input = compose.runOnIdle { checkNotNull(connection) }
+
+        // Check each complete composing replacement after recomposition.
+        for (syllable in listOf("ㅎ", "하", "한")) {
+            compose.runOnIdle {
+                assertTrue("Text input session changed mid-composition", connection === input)
+                assertTrue(input.setComposingText(syllable, 1))
+            }
+            body.assertTextContains(syllable, substring = false)
+        }
+        compose.runOnIdle {
+            assertTrue(connection === input)
+            assertTrue(input.finishComposingText())
+            assertTrue(input.commitText(rest, 1))
+        }
+        body.assertTextContains("한" + rest, substring = false)
+
+        saveDraft()
+        scenario.close()
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+
+        // Reopen the persisted note in the normal activity with the real IME.
+        compose.onNodeWithText(title).performClick()
+        compose.onNodeWithTag("note-title").assertTextContains(title)
+        body.assertTextContains("한" + rest, substring = false)
+    }
+
+    @Test
+    fun bodyUndoAndRedoAreSavedAndDiscardDoesNotResurrectEdits() {
+        saveNew("편집 이력 테스트", "원본 본문")
+        compose.onNodeWithText("편집 이력 테스트").performClick()
+        val body = compose.onNodeWithTag("note-body")
+
+        body.performTextReplacement("복구할 문단")
+        body.performTextReplacement("남은 문장")
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").performClick()
+        body.assertTextContains("복구할 문단")
+
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 다시 실행").performClick()
+        body.assertTextContains("남은 문장")
+
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").performClick()
+        saveDraft()
+        compose.onNodeWithText("편집 이력 테스트").performClick()
+        body.assertTextContains("복구할 문단")
+
+        body.performTextReplacement("버릴 편집")
+        compose.onNodeWithContentDescription("메모 고정").performClick()
+        compose.onNodeWithText("버리기").performClick()
+        body.assertTextContains("복구할 문단")
+        compose.onNodeWithContentDescription("메모 메뉴").performClick()
+        compose.onNodeWithText("본문 되돌리기").assertIsNotEnabled()
+        compose.onNodeWithText("본문 다시 실행").assertIsNotEnabled()
+    }
+
+    @Test
+    fun titleLimitStillLetsUsersShortenAnExistingLongTitle() {
+        val existingTitle = "가".repeat(122)
+        scenario.close()
+        File(targetContext().filesDir, "stillnote-notes.json").writeText(
+            """[{"id":"legacy-title","title":"$existingTitle","body":"","createdAt":1,"updatedAt":1}]"""
+        )
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+        // NotesStore restores the latest saved note directly into the editor.
+        val title = compose.onNodeWithTag("note-title")
+        title.assertTextContains(existingTitle)
+
+        val shorterTitle = "가".repeat(121)
+        title.performTextReplacement(shorterTitle)
+        title.assertTextContains(shorterTitle)
+        title.performTextReplacement("나".repeat(121))
+        title.assertTextContains(shorterTitle)
+
+        val allowedTitle = "가".repeat(120)
+        title.performTextReplacement(allowedTitle)
+        title.performTextReplacement("가".repeat(121))
+        title.assertTextContains(allowedTitle)
     }
 
     @Test

@@ -11,6 +11,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +38,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stillnote.shared.Note
@@ -53,6 +57,39 @@ fun StillnoteApp(
 ) {
     val state = model.state
     val store = model.store
+    val note = state.activeNote
+    val editorFields = if (note != null) {
+        key(note.id) {
+            val title = rememberTextFieldState(note.title)
+            val body = rememberTextFieldState(note.body)
+            remember { NoteEditorFields(title, body) }
+        }
+    } else null
+
+    fun syncDraft() {
+        if (note != null && editorFields != null) {
+            store.updateNote(note.id, editorFields.title.text.toString(), editorFields.body.text.toString())
+        }
+    }
+
+    LaunchedEffect(note?.id, editorFields) {
+        if (editorFields != null) {
+            snapshotFlow { editorFields.title.text to editorFields.body.text }.collect { syncDraft() }
+        }
+    }
+
+    fun discardDraft() {
+        store.cancelEdit()
+        val saved = store.state.activeNote
+        if (saved != null && saved.id == note?.id && editorFields != null) {
+            // A discarded edit can leave the editor open, for example when pinning a note.
+            editorFields.title.setTextAndPlaceCursorAtEnd(saved.title)
+            editorFields.body.setTextAndPlaceCursorAtEnd(saved.body)
+            editorFields.title.undoState.clearHistory()
+            editorFields.body.undoState.clearHistory()
+        }
+    }
+
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     // Avoid dismissing a newly focused search IME during the very first
@@ -71,16 +108,18 @@ fun StillnoteApp(
     var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun requestAction(action: () -> Unit) {
+        syncDraft()
         if (model.state.hasUnsavedChanges) pendingAction = action else {
-            if (model.state.saveFailed) store.cancelEdit()
+            if (model.state.saveFailed) discardDraft()
             action()
         }
     }
     fun finishPendingAction(save: Boolean) {
         if (save) {
+            syncDraft()
             if (!store.saveNote()) return
         } else {
-            store.cancelEdit()
+            discardDraft()
         }
         val action = pendingAction
         pendingAction = null
@@ -125,6 +164,7 @@ fun StillnoteApp(
                 }
             } else if (state.saveFailed) {
                 StorageBanner("변경 내용을 저장하지 못했어요. 앱을 닫기 전에 다시 시도해 주세요.", "저장 재시도") {
+                    syncDraft()
                     store.retrySave()
                 }
             }
@@ -152,25 +192,39 @@ fun StillnoteApp(
                     if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     if (wide || state.activeNote != null) {
                         Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
-                            val note = state.activeNote
-                            if (note == null) {
+                            if (note == null || editorFields == null) {
                                 EmptyEditor(canCreate = !state.loadFailed && !state.saveFailed) { store.createNote() }
                             } else {
                                 key(note.id) {
                                     NoteEditor(
                                         note = note,
+                                        fields = editorFields,
                                         state = state,
                                         showBack = !wide,
                                         onBack = { requestAction { store.closeNote() } },
-                                        onEdit = { title, body -> store.updateNote(note.id, title, body) },
-                                        onSave = { if (store.saveNote()) store.closeNote() },
-                                        onCancel = { store.cancelEdit(); store.closeNote() },
+                                        onSave = {
+                                            syncDraft()
+                                            if (store.saveNote()) store.closeNote()
+                                        },
+                                        onCancel = {
+                                            store.cancelEdit()
+                                            store.closeNote()
+                                        },
                                         onPin = { requestAction { store.togglePinned(note.id) } },
                                         onDuplicate = { requestAction { store.duplicateNote(note.id) } },
                                         onDelete = { requestAction { deleteId = note.id } },
-                                        onCopy = { onCopy(note.id) },
-                                        onShare = { onShare(note.id) },
-                                        onExportText = { onExportText(note.id) }
+                                        onCopy = {
+                                            syncDraft()
+                                            onCopy(note.id)
+                                        },
+                                        onShare = {
+                                            syncDraft()
+                                            onShare(note.id)
+                                        },
+                                        onExportText = {
+                                            syncDraft()
+                                            onExportText(note.id)
+                                        }
                                     )
                                 }
                             }
@@ -413,13 +467,26 @@ private fun NotesList(
     }
 }
 
+private class NoteEditorFields(val title: TextFieldState, val body: TextFieldState)
+
+private const val NOTE_TITLE_MAX_LENGTH = 120
+
+private val noteTitleLengthLimit = InputTransformation {
+    // Titles from an older app or a backup can already exceed the editor limit.
+    if (length > NOTE_TITLE_MAX_LENGTH && length >= originalText.length &&
+        !asCharSequence().contentEquals(originalText)
+    ) {
+        revertAllChanges()
+    }
+}
+
 @Composable
 private fun NoteEditor(
     note: Note,
+    fields: NoteEditorFields,
     state: NotesState,
     showBack: Boolean,
     onBack: () -> Unit,
-    onEdit: (String, String) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     onPin: () -> Unit,
@@ -429,13 +496,10 @@ private fun NoteEditor(
     onShare: () -> Unit,
     onExportText: () -> Unit
 ) {
-    var title by rememberSaveable(note.id, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(note.title)) }
-    var body by rememberSaveable(note.id, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(note.body)) }
+    val title = fields.title
+    val body = fields.body
+    val bodyHistory = body.undoState
     var menuOpen by remember(note.id) { mutableStateOf(false) }
-    LaunchedEffect(note.title, note.body) {
-        if (title.text != note.title) title = TextFieldValue(note.title)
-        if (body.text != note.body) body = TextFieldValue(note.body)
-    }
     Column(Modifier.fillMaxSize()) {
         val canChange = !state.isNewNote && !state.loadFailed && !state.saveFailed
         val unsaved = state.hasUnsavedChanges || state.saveFailed
@@ -460,6 +524,17 @@ private fun NoteEditor(
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         fun closeAnd(action: () -> Unit) { menuOpen = false; action() }
+                        DropdownMenuItem(
+                            text = { Text("본문 되돌리기") },
+                            onClick = { closeAnd(bodyHistory::undo) },
+                            enabled = bodyHistory.canUndo
+                        )
+                        DropdownMenuItem(
+                            text = { Text("본문 다시 실행") },
+                            onClick = { closeAnd(bodyHistory::redo) },
+                            enabled = bodyHistory.canRedo
+                        )
+                        HorizontalDivider()
                         DropdownMenuItem(text = { Text("메모 복제") }, onClick = { closeAnd(onDuplicate) }, enabled = canChange)
                         DropdownMenuItem(text = { Text("내용 복사") }, onClick = { closeAnd(onCopy) })
                         DropdownMenuItem(text = { Text("공유") }, onClick = { closeAnd(onShare) })
@@ -492,18 +567,13 @@ private fun NoteEditor(
         Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 20.dp).testTag("note-editor-scroll")) {
             BasicTextField(
-                value = title,
-                onValueChange = { value ->
-                    if (value.text == title.text || value.text.length <= 120 || value.text.length < title.text.length) {
-                        title = value
-                        onEdit(value.text, body.text)
-                    }
-                },
+                state = title,
+                inputTransformation = noteTitleLengthLimit,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("note-title").semantics { contentDescription = "메모 제목" },
-                decorationBox = { field ->
+                decorator = { field ->
                     Box {
                         if (title.text.isEmpty()) Text("제목", style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -511,17 +581,16 @@ private fun NoteEditor(
                     }
                 }
             )
-            Text("제목 ${title.text.length}/120자", Modifier.padding(top = 8.dp),
+            Text("제목 ${title.text.length}/${NOTE_TITLE_MAX_LENGTH}자", Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider(Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
             BasicTextField(
-                value = body,
-                onValueChange = { value -> body = value; onEdit(title.text, value.text) },
+                state = body,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp)
                     .testTag("note-body").semantics { contentDescription = "메모 내용" },
-                decorationBox = { field ->
+                decorator = { field ->
                     Box {
                         if (body.text.isEmpty()) Text("지금 떠오르는 생각을 적어보세요.",
                             style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -33,16 +33,33 @@ if [[ "$current_ime" != "$target_ime" || "$show_with_hardware" != "1" ]]; then
     exit 1
 fi
 
+failure_capture_args=(
+    -Pandroid.testInstrumentationRunnerArguments.androidx.compose.ui.test.failure.isScreenshotCaptureEnabled=true
+    -Pandroid.testInstrumentationRunnerArguments.androidx.compose.ui.test.failure.isUiHierarchyCaptureEnabled=true
+)
+
+# The dark-mode Gradle run reuses the same instrumented test output directory.
+save_failure_artifacts() {
+    local theme="$1"
+    local output="androidApp/build/outputs/connected_android_test_additional_output"
+    local destination="androidApp/build/qa-failure-artifacts/$theme"
+    if [[ -d "$output" ]]; then
+        mkdir -p "$destination" && cp -a "$output/." "$destination/"
+    fi
+}
+
 echo "::group::Android UI tests (light)"
 adb shell cmd uimode night no
-bash ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
+bash ./gradlew :androidApp:connectedDebugAndroidTest "${failure_capture_args[@]}" --stacktrace
 light_exit=$?
+if [[ "$light_exit" -ne 0 ]]; then save_failure_artifacts light || exit 1; fi
 echo "::endgroup::"
 
 echo "::group::Android UI tests (dark)"
 adb shell cmd uimode night yes
-bash ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks --stacktrace
+bash ./gradlew :androidApp:connectedDebugAndroidTest "${failure_capture_args[@]}" --rerun-tasks --stacktrace
 dark_exit=$?
+if [[ "$dark_exit" -ne 0 ]]; then save_failure_artifacts dark || exit 1; fi
 echo "::endgroup::"
 
 # MediaStore screenshots survive test-runner uninstall/reinstall cycles.
