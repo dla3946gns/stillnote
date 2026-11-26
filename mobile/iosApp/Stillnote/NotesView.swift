@@ -353,6 +353,33 @@ private struct NoteEditor: View {
     let delete: () -> Void
     @State private var deleting = false
     @State private var copied = false
+    @State private var bodyUndo: [String] = []
+    @State private var bodyRedo: [String] = []
+    private let historyLimit = 100
+
+    private var currentBody: String { model.note(id: noteID)?.body ?? "" }
+
+    private func editBody(_ value: String) {
+        guard value != currentBody else { return }
+        bodyUndo.append(currentBody)
+        if bodyUndo.count > historyLimit { bodyUndo.removeFirst() }
+        bodyRedo.removeAll()
+        model.updateBody(id: noteID, body: value)
+    }
+
+    private func undoBody() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        guard let previous = bodyUndo.popLast() else { return }
+        bodyRedo.append(currentBody)
+        model.updateBody(id: noteID, body: previous)
+    }
+
+    private func redoBody() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        guard let next = bodyRedo.popLast() else { return }
+        bodyUndo.append(currentBody)
+        model.updateBody(id: noteID, body: next)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -397,7 +424,7 @@ private struct NoteEditor: View {
 
             TextEditor(text: Binding(
                 get: { model.note(id: noteID)?.body ?? "" },
-                set: { model.updateBody(id: noteID, body: $0) }
+                set: { editBody($0) }
             ))
             .font(.body)
             .scrollContentBackground(.hidden)
@@ -424,6 +451,11 @@ private struct NoteEditor: View {
                 }
                 .disabled(model.state.isNewNote)
                 Menu {
+                    Button("본문 되돌리기", systemImage: "arrow.uturn.backward", action: undoBody)
+                        .disabled(bodyUndo.isEmpty)
+                    Button("본문 다시 실행", systemImage: "arrow.uturn.forward", action: redoBody)
+                        .disabled(bodyRedo.isEmpty)
+                    Divider()
                     Button(copied ? "복사했어요" : "복사", systemImage: "doc.on.doc") {
                         UIPasteboard.general.string = model.text(id: noteID)
                         copied = true
