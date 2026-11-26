@@ -28,7 +28,8 @@ def rasterize(name: str) -> Image.Image:
 
 def build(output: Path, screenshot_dir: Path | None) -> None:
     output.mkdir(parents=True, exist_ok=True)
-    icon = rasterize("stillnote-icon.svg").convert("RGBA")
+    with Image.open(SVG / "aj-notes-play-icon-512.png") as source_icon:
+        icon = source_icon.convert("RGBA")
     assert icon.size == (512, 512), f"Icon size: {icon.size}"
     icon_file = output / "stillnote-play-icon-512.png"
     icon.save(icon_file, optimize=True)

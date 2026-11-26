@@ -180,15 +180,17 @@ jobs:
         working-directory: baseline/mobile
         run: bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest --stacktrace
       - name: Build candidate APK with higher versionCode
+        id: candidate-build
         working-directory: candidate/mobile
-        # Override only inside this verification, never bump the production code.
+        # Exercise a real version upgrade without changing production metadata.
         run: |
           set -euo pipefail
-          baseline_code="$(sed -n 's/^stillnoteVersionCode=//p' ../../baseline/mobile/gradle.properties)"
-          [[ "$baseline_code" =~ ^[0-9]+$ ]] || { echo "Invalid baseline versionCode: $baseline_code" >&2; exit 1; }
-          candidate_code=$((baseline_code + 1))
-          echo "CI-only upgrade versionCode: $baseline_code -> $candidate_code"
-          bash ./gradlew :androidApp:assembleDebug "-PstillnoteVersionCode=$candidate_code" --stacktrace
+          base_code=$(sed -n 's/^stillnoteVersionCode=//p' ../../baseline/mobile/gradle.properties)
+          candidate_code=$(sed -n 's/^stillnoteVersionCode=//p' gradle.properties)
+          [[ "$base_code" =~ ^[0-9]+$ && "$candidate_code" =~ ^[0-9]+$ ]]
+          if (( candidate_code <= base_code )); then candidate_code=$((base_code + 1)); fi
+          bash ./gradlew :androidApp:assembleDebug -PstillnoteVersionCode="$candidate_code" --stacktrace
+          printf 'version_code=%s\n' "$candidate_code" >> "$GITHUB_OUTPUT"
       - name: Enable hardware-accelerated Android emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -202,7 +204,7 @@ jobs:
           arch: x86_64
           profile: pixel_4
           disable-animations: true
-          script: bash candidate/mobile/scripts/run-upgrade-preservation-test.sh baseline/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk baseline/mobile/androidApp/build/outputs/apk/androidTest/debug/androidApp-debug-androidTest.apk candidate/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          script: bash candidate/mobile/scripts/run-upgrade-preservation-test.sh baseline/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk baseline/mobile/androidApp/build/outputs/apk/androidTest/debug/androidApp-debug-androidTest.apk candidate/mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk ${{ steps.candidate-build.outputs.version_code }}
 
   emulator-ui:
     name: Android emulator UI (light and dark)

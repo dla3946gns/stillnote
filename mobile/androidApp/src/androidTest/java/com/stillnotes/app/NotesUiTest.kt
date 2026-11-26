@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.view.WindowInsets
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -179,12 +181,30 @@ class NotesUiTest {
     }
 
     @Test
-    fun koreanEmojiAndMultilineBodySurviveActivityRestart() {
-        // This checks committed Unicode text; real IME composing is separate device QA.
+    fun koreanCompositionEmojiAndMultilineBodySurviveActivityRestart() {
         val title = "한글 제목 🌿"
-        val body = "첫 문장입니다.\n두 번째 문단 😊\n마지막 줄"
+        val rest = "글 본문입니다.\n두 번째 문단 😊\n마지막 줄"
+        val body = compose.onNodeWithTag("note-body")
 
-        newDraft(title, body)
+        compose.onNodeWithContentDescription("새 메모").performClick()
+        compose.onNodeWithTag("note-title").performTextInput(title)
+        tapUntilKeyboardVisible("note-body")
+        lateinit var input: InputConnection
+        scenario.onActivity { activity ->
+            input = checkNotNull(activity.currentFocus?.onCreateInputConnection(EditorInfo()))
+        }
+        // Send the editor the same composing operations a Korean IME uses.
+        // Let Compose render each update so a lost composing region is observable.
+        for (syllable in listOf("ㅎ", "하", "한")) {
+            scenario.onActivity { assertTrue(input.setComposingText(syllable, 1)) }
+            body.assertTextContains(syllable)
+        }
+        scenario.onActivity {
+            assertTrue(input.finishComposingText())
+            assertTrue(input.commitText(rest, 1))
+        }
+        body.assertTextContains("한" + rest)
+
         saveDraft()
         scenario.close()
         scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -192,7 +212,7 @@ class NotesUiTest {
 
         // NotesStore automatically reopens the most recently saved note.
         compose.onNodeWithTag("note-title").assertTextContains(title)
-        compose.onNodeWithTag("note-body").assertTextContains(body)
+        body.assertTextContains("한" + rest)
     }
 
     @Test

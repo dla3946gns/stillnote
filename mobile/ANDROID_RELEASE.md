@@ -99,10 +99,10 @@ Secrets 구성을 마치면 Actions → **Android signed release AAB** → **Run
 
 [자동 업데이트 보존 테스트](scripts/run-upgrade-preservation-test.sh)는 GitHub PR CI에서 다음 절차를 거칩니다.
 
-1. 이전 `main` 소스에서 `versionCode=1` 디버그 APK와 계측 테스트 APK를 빌드합니다.
+1. 이전 `main` 소스의 현재 versionCode로 디버그 APK와 계측 테스트 APK를 빌드합니다.
 2. 테스트가 실제 앱 UI에서 메모를 생성·저장하고 앱을 재실행해 확인합니다.
-3. 같은 GitHub runner의 **동일한 디버그 서명키**로 새 PR의 `versionCode=2` 디버그 APK를 빌드합니다. 이 숫자 증가는 **테스트 빌드에만 적용하며 저장소 릴리스 버전은 변경하지 않습니다.**
-4. Android 에뮬레이터에서 `adb install -r`로 앱을 제거하지 않고 덮어씁니다.
+3. 같은 GitHub runner의 **동일한 디버그 서명키**로 새 PR의 디버그 APK를 빌드합니다. 후보 버전은 PR의 versionCode와 이전 main의 versionCode + 1 중 큰 값을 사용하며, 이 테스트용 재정의는 저장소 릴리스 버전을 변경하지 않습니다.
+4. Android 에뮬레이터에서 `adb install -r`로 앱을 제거하지 않고 덮어쓰고, 설치된 versionCode가 빌드 시 전달한 예상 버전과 정확히 일치하며 이전 버전보다 높은지 확인합니다.
 5. 업그레이드된 앱을 실행한 후, 메모 내부 저장 파일의 내용이 업데이트 전과 **바이트 단위로 동일한지** 비교합니다.
 
 이것은 실제 APK 교체를 포함하는 데이터 보존 회귀 테스트지만 **Play App Signing 키로 서명한 실제 Play 스토어 업데이트 경로를 완전히 대체하지 않습니다.** 서명이 다른 기존 디버그 앱을 Play 앱으로 덮어쓰는 것도 허용되지 않습니다. 실기기 전환과 Play 내부 테스트에서 별도 확인해야 합니다.
