@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +23,15 @@ class RecordedNotesUiTest {
 
     @Test
     fun recordDemo() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        File(context.filesDir, "stillnote-notes.json").writeText(
+            """
+            [
+              {"id":"demo-pinned","title":"나의 목표","body":"매일 생각 한 줄을 남기기","createdAt":1795737600000,"updatedAt":1795741200000,"pinned":true},
+              {"id":"demo-recent","title":"주말 계획","body":"토요일에는 동네 카페에서 책 읽기. Weekend","createdAt":1795737600000,"updatedAt":1795744800000,"pinned":false}
+            ]
+            """.trimIndent()
+        )
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("고정된 메모").assertIsDisplayed()
             compose.onNodeWithText("최근 메모").assertIsDisplayed()

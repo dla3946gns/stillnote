@@ -12,9 +12,6 @@ case "${1:-}" in
     adb install "$apk_dir/debug/androidApp-debug.apk"
     adb install "$apk_dir/androidTest/debug/androidApp-debug-androidTest.apk"
     adb shell cmd uimode night no
-    adb shell run-as "$app" mkdir -p files
-    adb shell -T "run-as $app tee files/stillnote-notes.json >/dev/null" < "$demo/notes.json"
-    adb exec-out run-as "$app" cat files/stillnote-notes.json | cmp "$demo/notes.json" -
     remote=/sdcard/aj-notes-demo.mp4
     adb shell settings put system show_touches 1
     adb shell screenrecord --time-limit 100 "$remote" &
