@@ -38,7 +38,10 @@ jobs:
           git diff --exit-code "$DEMO_BUILD_SHA" HEAD -- mobile
       - name: Build the Android recording instrumentation APK
         run: |
-          sdkmanager "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$(find "$sdk_root/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$sdkmanager"
+          "$sdkmanager" --sdk_root="$sdk_root" "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
           cp .github/demo/RecordedNotesUiTest.kt mobile/androidApp/src/androidTest/java/com/stillnotes/app/
           cd mobile
           bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest
