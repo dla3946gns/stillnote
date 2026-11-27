@@ -42,7 +42,7 @@ sys.exit("No available iPhone simulator")
 ')"
     xcrun simctl boot "$simulator"
     xcrun simctl bootstatus "$simulator" -b
-    xcrun simctl status_bar "$simulator" override --time '9:41' --batteryState unplugged --batteryLevel 100
+    xcrun simctl status_bar "$simulator" override --time '9:41'
     xcrun simctl install "$simulator" "$build/Stillnote.app"
     container="$(xcrun simctl get_app_container "$simulator" "$app" data)/Library/Application Support/Stillnote"
     mkdir -p "$container"
