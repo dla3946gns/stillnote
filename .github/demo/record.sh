@@ -14,6 +14,7 @@ case "${1:-}" in
     adb shell cmd uimode night no
     adb shell run-as "$app" mkdir -p files
     adb shell -T "run-as $app tee files/stillnote-notes.json >/dev/null" < "$demo/notes.json"
+    adb exec-out run-as "$app" cat files/stillnote-notes.json | cmp "$demo/notes.json" -
     adb shell am start -W -n "$app/.MainActivity"
     remote=/sdcard/aj-notes-demo.mp4
     adb shell settings put system show_touches 1
@@ -62,7 +63,16 @@ esac
 
 trap stop_recording EXIT
 sleep 1
-maestro test "$demo/flow.yaml"
+if ! maestro test "$demo/flow.yaml"; then
+  if [[ "$1" == android ]]; then
+    adb shell uiautomator dump /sdcard/aj-notes-view.xml
+    adb pull /sdcard/aj-notes-view.xml "$out/debug-view.xml"
+    adb exec-out screencap -p > "$out/debug-screen.png"
+  else
+    xcrun simctl io "$simulator" screenshot "$out/debug-screen.png"
+  fi
+  exit 1
+fi
 sleep 1
 stop_recording
 trap - EXIT

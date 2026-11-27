@@ -55,6 +55,12 @@ jobs:
           name: aj-notes-android-demo
           path: ${{ runner.temp }}/aj-notes-demo/AJ-Notes-Android.mp4
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: aj-notes-android-recording-debug
+          path: ${{ runner.temp }}/aj-notes-demo/debug-*
+          if-no-files-found: ignore
 
   ios-video:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 44
@@ -86,3 +92,9 @@ jobs:
           name: aj-notes-ios-demo
           path: ${{ runner.temp }}/aj-notes-demo/AJ-Notes-iOS.mp4
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: aj-notes-ios-recording-debug
+          path: ${{ runner.temp }}/aj-notes-demo/debug-*
+          if-no-files-found: ignore

@@ -1,6 +1,9 @@
 appId: com.stillnotes.app
 ---
-- assertVisible: "고정된 메모"
+- launchApp
+- extendedWaitUntil:
+    visible: "고정된 메모"
+    timeout: 25000
 - assertVisible: "최근 메모"
 - waitForAnimationToEnd:
     timeout: 1200
