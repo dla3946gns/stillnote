@@ -29,16 +29,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Get the verified debug APK
+      - name: Verify the Android source and prior CI result
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$(gh run view 45948710536 --json headSha,conclusion --jq '.headSha + ":" + .conclusion')" = "$DEMO_BUILD_SHA:success"
-          gh run download 45948710536 --name stillnote-android-debug-apk --dir "$RUNNER_TEMP/aj-notes-build"
-      - name: Install Maestro and enable KVM
+          git fetch --depth=1 origin "$DEMO_BUILD_SHA"
+          git diff --exit-code "$DEMO_BUILD_SHA" HEAD -- mobile
+      - name: Build the Android recording instrumentation APK
         run: |
-          curl -fsSL https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          sdkmanager "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
+          cp .github/demo/RecordedNotesUiTest.kt mobile/androidApp/src/androidTest/java/com/stillnotes/app/
+          cd mobile
+          bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm

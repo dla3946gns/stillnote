@@ -8,14 +8,13 @@ app=com.stillnotes.app
 
 case "${1:-}" in
   android)
-    apk="$(find "$build" -name '*.apk' -type f -print -quit)"
-    test -n "$apk"
-    adb install "$apk"
+    apk_dir="$demo/../../mobile/androidApp/build/outputs/apk"
+    adb install "$apk_dir/debug/androidApp-debug.apk"
+    adb install "$apk_dir/androidTest/debug/androidApp-debug-androidTest.apk"
     adb shell cmd uimode night no
     adb shell run-as "$app" mkdir -p files
     adb shell -T "run-as $app tee files/stillnote-notes.json >/dev/null" < "$demo/notes.json"
     adb exec-out run-as "$app" cat files/stillnote-notes.json | cmp "$demo/notes.json" -
-    adb shell am start -W -n "$app/.MainActivity"
     remote=/sdcard/aj-notes-demo.mp4
     adb shell settings put system show_touches 1
     adb shell screenrecord --time-limit 100 "$remote" &
@@ -63,14 +62,12 @@ esac
 
 trap stop_recording EXIT
 sleep 1
-if ! maestro test "$demo/flow.yaml"; then
-  if [[ "$1" == android ]]; then
-    adb shell uiautomator dump /sdcard/aj-notes-view.xml
-    adb pull /sdcard/aj-notes-view.xml "$out/debug-view.xml"
-    adb exec-out screencap -p > "$out/debug-screen.png"
-  else
-    xcrun simctl io "$simulator" screenshot "$out/debug-screen.png"
-  fi
+if [[ "$1" == android ]]; then
+  adb shell am instrument -w -r -e class "$app.RecordedNotesUiTest" \
+    "$app.test/androidx.test.runner.AndroidJUnitRunner" | tee "$out/debug-instrumentation.txt"
+  grep -Fq 'OK (1 test)' "$out/debug-instrumentation.txt"
+elif ! maestro test "$demo/flow.yaml"; then
+  xcrun simctl io "$simulator" screenshot "$out/debug-screen.png"
   exit 1
 fi
 sleep 1
