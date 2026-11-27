@@ -142,32 +142,6 @@ fun StillnoteApp(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        snackbarHost = {
-            val message = model.platformMessage ?: state.message
-            if (message != null) {
-                Snackbar(
-                    modifier = Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    dismissAction = {
-                        TextButton(onClick = {
-                            model.platformMessage = null
-                            store.clearMessage()
-                        }) { Text("닫기", color = MaterialTheme.colorScheme.inversePrimary) }
-                    },
-                    action = {
-                        if (model.platformMessage == null && state.canUndoDelete) {
-                            TextButton(onClick = { requestAction { store.undoDelete() } }, enabled = !state.saveFailed) {
-                                Text("삭제 취소", color = MaterialTheme.colorScheme.inversePrimary)
-                            }
-                        } else {
-                            TextButton(onClick = {
-                                model.platformMessage = null
-                                store.clearMessage()
-                            }) { Text("확인", color = MaterialTheme.colorScheme.inversePrimary) }
-                        }
-                    }
-                ) { Text(message) }
-            }
-        }
     ) { padding ->
         // adjustResize already sizes the app's content above the IME. Applying
         // imePadding here as well on some devices collapses the weighted list/editor.
@@ -252,6 +226,30 @@ fun StillnoteApp(
                         }
                     }
                 }
+            }
+            val message = model.platformMessage ?: state.message
+            if (message != null) {
+                Snackbar(
+                    modifier = Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    dismissAction = {
+                        TextButton(onClick = {
+                            model.platformMessage = null
+                            store.clearMessage()
+                        }) { Text("닫기", color = MaterialTheme.colorScheme.inversePrimary) }
+                    },
+                    action = {
+                        if (model.platformMessage == null && state.canUndoDelete) {
+                            TextButton(onClick = { requestAction { store.undoDelete() } }, enabled = !state.saveFailed) {
+                                Text("삭제 취소", color = MaterialTheme.colorScheme.inversePrimary)
+                            }
+                        } else {
+                            TextButton(onClick = {
+                                model.platformMessage = null
+                                store.clearMessage()
+                            }) { Text("확인", color = MaterialTheme.colorScheme.inversePrimary) }
+                        }
+                    }
+                ) { Text(message) }
             }
         }
     }
