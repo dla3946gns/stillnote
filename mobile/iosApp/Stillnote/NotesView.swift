@@ -181,17 +181,20 @@ struct NotesView: View {
         }
     }
 
-    private var sidebar: some View {
+    private func sidebarPage(_ page: Destination) -> some View {
         Group {
-            if destination == .settings {
+            if page == .settings {
                 settings
             } else {
                 VStack(spacing: 0) {
-                    if destination == .search { searchField }
-                    noteList(grouped: destination == .home)
+                    if page == .search {
+                        searchField
+                    }
+                    noteList(grouped: page == .home)
+                        .contentMargins(.bottom, 76, for: .scrollContent)
                 }
-                .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
-                    if !model.state.loadFailed && !model.state.saveFailed {
+                .overlay(alignment: .bottomTrailing) {
+                    if !searchFocused && !model.state.loadFailed && !model.state.saveFailed {
                         Button {
                             request(.create)
                         } label: {
@@ -207,10 +210,31 @@ struct NotesView: View {
                 }
             }
         }
-        .id(destination)
-        .transition(reduceMotion ? .identity : .opacity)
         .background(Theme.cream)
-        .safeAreaInset(edge: .bottom, spacing: 0) { destinationBar }
+    }
+
+    private var sidebar: some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                TabView(selection: Binding(get: { destination }, set: { navigate(to: $0) })) {
+                    ForEach(Destination.allCases) { page in
+                        sidebarPage(page)
+                            .tabItem { Label(page.rawValue, systemImage: page.icon) }
+                            .tag(page)
+                    }
+                }
+                .tabViewStyle(.tabBarOnly)
+                .tint(Theme.cocoa)
+            } else {
+                sidebarPage(destination)
+                    .id(destination)
+                    .transition(reduceMotion ? .identity : .opacity)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { destinationBar }
+            }
+        }
+        .onChange(of: destination) { _, page in
+            searchFocused = page == .search
+        }
         .toolbar {
             if destination != .settings {
                 ToolbarItem(placement: .topBarTrailing) {
