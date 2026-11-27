@@ -163,8 +163,10 @@ class StoreTests(unittest.TestCase):
         preview = {"buildId": "build-4", "reviewItems": [{"type": "appStoreVersions", "id": "v1"}]}
         attached = {"data": {"relationships": {"build": {"data": {"id": "build-4"}}}}}
         with patch.object(store, "asc", side_effect=[{}, preview, {"submissionId": "s", "buildId": "build-4"}]) as api, \
-             patch.object(store, "version_info", return_value=attached):
+             patch.object(store, "version_info", return_value=attached), \
+             patch.object(store, "ensure_export_compliance") as compliance:
             store.submit_review("1.0", "4.1", "v1")
+        compliance.assert_called_once_with("build-4", "4.1")
         wait, dry, submit = [c.args for c in api.call_args_list]
         self.assertIn("--fail-on-invalid", wait)
         self.assertEqual(wait[wait.index("--version") + 1], "1.0")
@@ -194,6 +196,62 @@ class StoreTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs"):
                 store.submit_review("1.0", "4.1", "v1")
         self.assertEqual(api.call_count, 2)
+
+
+class ExportComplianceTests(unittest.TestCase):
+    def build(self, value, number="8.1", identifier="build-8"):
+        return {"data": {"type": "builds", "id": identifier, "attributes": {
+            "version": number, "processingState": "VALID", "usesNonExemptEncryption": value}}}
+
+    def test_existing_exemption_is_not_rewritten(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "preserve"}), \
+             patch.object(store, "asc", return_value=self.build(False)) as api:
+            store.ensure_export_compliance("build-8", "8.1")
+        api.assert_called_once()
+
+    def test_missing_declaration_requires_explicit_confirmation(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "preserve"}), \
+             patch.object(store, "asc", return_value=self.build(None)) as api:
+            with self.assertRaisesRegex(ValueError, "Export compliance missing"):
+                store.ensure_export_compliance("build-8", "8.1")
+        api.assert_called_once()
+
+    def test_explicit_confirmation_updates_and_verifies_exact_build(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "confirm-no-non-exempt"}), \
+             patch.object(store, "asc", side_effect=[self.build(None), {}, self.build(False)]) as api:
+            store.ensure_export_compliance("build-8", "8.1")
+        write = api.call_args_list[1]
+        self.assertEqual(write.args, ("api", "PATCH", "/v1/builds/build-8", "--confirm"))
+        self.assertEqual(write.kwargs["body"]["data"]["attributes"], {"usesNonExemptEncryption": False})
+        self.assertEqual(api.call_count, 3)
+
+    def test_existing_non_exempt_declaration_is_never_overwritten(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "confirm-no-non-exempt"}), \
+             patch.object(store, "asc", return_value=self.build(True)) as api:
+            with self.assertRaisesRegex(ValueError, "conflicts"):
+                store.ensure_export_compliance("build-8", "8.1")
+        api.assert_called_once()
+
+    def test_wrong_build_is_never_modified(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "confirm-no-non-exempt"}), \
+             patch.object(store, "asc", return_value=self.build(None, number="7.1")) as api:
+            with self.assertRaisesRegex(ValueError, "different build"):
+                store.ensure_export_compliance("build-8", "8.1")
+        api.assert_called_once()
+
+    def test_unverified_write_stops_submission(self):
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "confirm-no-non-exempt"}), \
+             patch.object(store, "asc", side_effect=[self.build(None), {}, self.build(None)]):
+            with self.assertRaisesRegex(ValueError, "did not confirm"):
+                store.ensure_export_compliance("build-8", "8.1")
+
+    def test_review_stops_before_submit_on_missing_compliance(self):
+        preview = {"buildId": "build-8", "reviewItems": [{"type": "appStoreVersions", "id": "v1"}]}
+        with patch.dict("os.environ", {"STORE_EXPORT_COMPLIANCE": "preserve"}), \
+             patch.object(store, "asc", side_effect=[{}, preview, self.build(None)]) as api:
+            with self.assertRaisesRegex(ValueError, "Export compliance missing"):
+                store.submit_review("1.0.2", "8.1", "v1")
+        self.assertEqual(api.call_count, 3)
 
 
 if __name__ == "__main__":
