@@ -198,7 +198,7 @@ struct NotesView: View {
                             Image(systemName: "square.and.pencil")
                                 .font(.title3.weight(.semibold))
                                 .frame(width: 54, height: 54)
-                                .background(Theme.apricot, in: Circle())
+                                .notesGlass(in: Circle(), fallback: Theme.apricot, tint: Theme.apricot, interactive: true)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("새 메모")
@@ -248,7 +248,9 @@ struct NotesView: View {
             }
         }
         .padding(.vertical, 4)
-        .background(.bar)
+        .notesGlass(in: Capsule(), fallback: Material.regular)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 4)
     }
 
     private var searchField: some View {
@@ -269,7 +271,7 @@ struct NotesView: View {
         }
         .padding(.horizontal, 16)
         .frame(minHeight: 46)
-        .background(Theme.ivory, in: Capsule())
+        .notesGlass(in: Capsule(), fallback: Theme.ivory)
         .padding(.horizontal, 16)
     }
 
@@ -517,12 +519,12 @@ private struct NoteEditor: View {
                     model.cancel()
                     model.select(nil)
                 }
-                    .buttonStyle(.bordered)
+                .notesActionStyle()
                 Button("저장") {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     if model.save() { model.select(nil) }
                 }
-                    .buttonStyle(.borderedProminent)
+                .notesActionStyle(prominent: true)
                 Spacer(minLength: 0)
                 HStack(spacing: 0) {
                     Button("본문 되돌리기", systemImage: "arrow.uturn.backward", action: undoBody)
@@ -532,7 +534,7 @@ private struct NoteEditor: View {
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(EditHistoryButtonStyle())
-                .background(Theme.cream, in: Capsule())
+                .notesGlass(in: Capsule(), fallback: Theme.cream)
             }
 
             LimitedTitleField(text: Binding(
@@ -612,5 +614,36 @@ private struct EditHistoryButtonStyle: ButtonStyle {
             .frame(width: 48, height: 44)
             .contentShape(Rectangle())
             .opacity(isEnabled ? (configuration.isPressed ? 0.65 : 1) : 0.35)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func notesGlass<S: Shape, F: ShapeStyle>(
+        in shape: S,
+        fallback: F,
+        tint: Color? = nil,
+        interactive: Bool = false
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            background(fallback, in: shape)
+        }
+    }
+
+    @ViewBuilder
+    func notesActionStyle(prominent: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            if prominent {
+                buttonStyle(.glassProminent)
+            } else {
+                buttonStyle(.glass)
+            }
+        } else if prominent {
+            buttonStyle(.borderedProminent)
+        } else {
+            buttonStyle(.bordered)
+        }
     }
 }
