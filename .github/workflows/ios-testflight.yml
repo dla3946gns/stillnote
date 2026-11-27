@@ -19,6 +19,12 @@ on:
         description: Optional iOS version override (defaults to the Xcode project version)
         type: string
 
+      export_compliance:
+        description: Confirm no non-exempt encryption only after checking app and third-party dependencies
+        type: choice
+        options: [preserve, confirm-no-non-exempt]
+        default: preserve
+
 permissions:
   contents: read
 
@@ -160,5 +166,6 @@ jobs:
           STORE_LOCALE: ko
           STORE_GROUP: ''
           STORE_BUILD: ${{ needs.testflight.outputs.build_number }}
+          STORE_EXPORT_COMPLIANCE: ${{ inputs.export_compliance }}
         shell: bash
         run: bash mobile/scripts/app_store_ci.sh

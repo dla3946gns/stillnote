@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -143,6 +144,44 @@ def prepare_review_notes(version, locale, record, state):
         patch_metadata(localization(record["id"], locale), {"whatsNew": info["whatsNew"]})
 
 
+def ensure_export_compliance(build_id, number):
+    """Preserve existing declarations; write only an explicitly confirmed exemption."""
+    policy = os.environ.get("STORE_EXPORT_COMPLIANCE", "preserve")
+    if policy not in {"preserve", "confirm-no-non-exempt"}:
+        raise ValueError("Unknown export compliance policy")
+    if not isinstance(build_id, str) or not re.fullmatch(r"[A-Za-z0-9-]+", build_id):
+        raise ValueError("Review preview did not identify an exact build")
+    endpoint = f"/v1/builds/{build_id}"
+    query = urlencode({"fields[builds]": "version,usesNonExemptEncryption,processingState"})
+    def read():
+        row = asc("api", "GET", f"{endpoint}?{query}")["data"]
+        if row["id"] != build_id or row["type"] != "builds" or row["attributes"]["version"] != number:
+            raise ValueError("Export compliance lookup returned a different build")
+        if row["attributes"]["processingState"] != "VALID":
+            raise ValueError("Build is not valid for export compliance")
+        return row["attributes"]["usesNonExemptEncryption"]
+
+    current = read()
+    if current is True:
+        if policy == "confirm-no-non-exempt":
+            raise ValueError("Existing non-exempt encryption declaration conflicts with confirmation; review in App Store Connect")
+        print("Existing non-exempt encryption declaration preserved; Apple may require supporting documents")
+        return
+    if current is False:
+        print("Export compliance verified: no non-exempt encryption")
+        return
+    if current is not None:
+        raise ValueError("Unexpected export compliance value")
+    if policy != "confirm-no-non-exempt":
+        raise ValueError("Export compliance missing. Confirm the build's exemption in App Store Connect or explicitly select confirm-no-non-exempt after checking all dependencies.")
+    asc("api", "PATCH", endpoint, "--confirm",
+        body={"data": {"type": "builds", "id": build_id,
+                       "attributes": {"usesNonExemptEncryption": False}}})
+    if read() is not False:
+        raise ValueError("Apple did not confirm the export compliance update")
+    print("Export compliance updated and verified: no non-exempt encryption")
+
+
 def submit_review(version, number, version_id):
     if not re.fullmatch(VERSION, number):
         raise ValueError("Enter the exact TestFlight build number (CFBundleVersion)")
@@ -155,6 +194,7 @@ def submit_review(version, number, version_id):
         items = [(i["type"], i["id"]) for i in preview.get("reviewItems", [])]
         if items != [("appStoreVersions", version_id)]:
             raise ValueError("The review draft includes other items or does not identify this version; inspect it in App Store Connect.")
+        ensure_export_compliance(preview["buildId"], number)
         receipt = asc(*args, "--confirm")
     else:
         receipt = preview
