@@ -8,6 +8,9 @@ struct NotesView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = NotesModel()
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var destination: Destination = .home
+    @FocusState private var searchFocused: Bool
     @State private var importing = false
     @State private var exporting = false
     @State private var backup = BackupDocument(content: "")
@@ -16,6 +19,22 @@ struct NotesView: View {
     @State private var fileError: String?
     @State private var pendingAction: PendingAction?
     @State private var confirmingUnsavedChanges = false
+
+    private enum Destination: String, CaseIterable, Identifiable {
+        case home = "홈"
+        case search = "검색"
+        case settings = "설정"
+
+        var id: Self { self }
+
+        var icon: String {
+            switch self {
+            case .home: "house"
+            case .search: "magnifyingglass"
+            case .settings: "slider.horizontal.3"
+            }
+        }
+    }
 
     private enum PendingAction {
         case select(String?)
@@ -40,7 +59,7 @@ struct NotesView: View {
             }
         )) {
             sidebar
-                .navigationTitle("AJ Notes")
+                .navigationTitle(destination == .home ? "AJ Notes" : destination.rawValue)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 380)
         } detail: {
             if model.state.loadFailed {
@@ -71,6 +90,7 @@ struct NotesView: View {
         .foregroundStyle(Theme.ink)
         .safeAreaInset(edge: .bottom, spacing: 0) { statusPanel }
         .onChange(of: model.activeID) { _, id in
+            searchFocused = false
             compactColumn = id == nil ? .sidebar : .detail
         }
         .fileImporter(
@@ -152,10 +172,172 @@ struct NotesView: View {
         }
     }
 
+    private func navigate(to page: Destination) {
+        guard destination != page else { return }
+        searchFocused = false
+        if page != .search { model.setQuery("") }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
+            destination = page
+        }
+    }
+
+    private func sidebarPage(_ page: Destination) -> some View {
+        Group {
+            if page == .settings {
+                settings
+            } else {
+                VStack(spacing: 0) {
+                    if page == .search {
+                        searchField
+                    }
+                    noteList(grouped: page == .home)
+                        .contentMargins(.bottom, 76, for: .scrollContent)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if !searchFocused && !model.state.loadFailed && !model.state.saveFailed {
+                        Button {
+                            request(.create)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.title3.weight(.semibold))
+                                .frame(width: 54, height: 54)
+                                .notesGlass(in: Circle(), fallback: Theme.apricot, tint: Theme.apricot, interactive: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("새 메모")
+                        .padding([.trailing, .bottom], 16)
+                    }
+                }
+            }
+        }
+        .background(Theme.cream)
+    }
+
     private var sidebar: some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                TabView(selection: Binding(get: { destination }, set: { navigate(to: $0) })) {
+                    ForEach(Destination.allCases) { page in
+                        sidebarPage(page)
+                            .tabItem { Label(page.rawValue, systemImage: page.icon) }
+                            .tag(page)
+                    }
+                }
+                .tabViewStyle(.tabBarOnly)
+                .tint(Theme.cocoa)
+            } else {
+                sidebarPage(destination)
+                    .id(destination)
+                    .transition(reduceMotion ? .identity : .opacity)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { destinationBar }
+            }
+        }
+        .onChange(of: destination) { _, page in
+            searchFocused = page == .search
+        }
+        .toolbar {
+            if destination != .settings {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        model.setPinnedOnly(!model.state.pinnedOnly)
+                    } label: {
+                        Label("고정한 메모만 보기", systemImage: model.state.pinnedOnly ? "pin.fill" : "pin")
+                    }
+                    .accessibilityValue(model.state.pinnedOnly ? "켜짐" : "꺼짐")
+                }
+            }
+        }
+    }
+
+    private var destinationBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Destination.allCases) { page in
+                Button {
+                    navigate(to: page)
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: page.icon)
+                            .font(.body.weight(.semibold))
+                            .frame(width: 54, height: 27)
+                            .background(destination == page ? Theme.apricot : .clear, in: Capsule())
+                        Text(page.rawValue).font(.caption)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(page.rawValue)
+                .accessibilityAddTraits(destination == page ? .isSelected : [])
+            }
+        }
+        .padding(.vertical, 4)
+        .notesGlass(in: Capsule(), fallback: Material.regular)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 4)
+    }
+
+    private var searchField: some View {
+        HStack {
+            Image(systemName: "magnifyingglass").accessibilityHidden(true)
+            TextField("메모 검색", text: Binding(
+                get: { model.state.query },
+                set: { model.setQuery($0) }
+            ))
+            .focused($searchFocused)
+            .submitLabel(.search)
+            .onSubmit { searchFocused = false }
+            if !model.state.query.isEmpty {
+                Button("검색어 지우기", systemImage: "xmark.circle.fill") { model.setQuery("") }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 46)
+        .notesGlass(in: Capsule(), fallback: Theme.ivory)
+        .padding(.horizontal, 16)
+    }
+
+    private func noteList(grouped: Bool) -> some View {
         List {
-            Section {
-                ForEach(model.visibleNotes, id: \.id) { note in
+            if grouped {
+                noteSection("고정된 메모", notes: model.visibleNotes.filter { $0.pinned })
+                noteSection("최근 메모", notes: model.visibleNotes.filter { !$0.pinned })
+            } else {
+                noteSection("검색 결과", notes: model.visibleNotes)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .overlay {
+            if model.visibleNotes.isEmpty && !model.state.loadFailed {
+                ContentUnavailableView {
+                    Label(emptyListTitle, systemImage: "note.text")
+                } description: {
+                    EmptyView()
+                } actions: {
+                    if !model.state.query.isEmpty {
+                        Button("검색 지우기") { model.setQuery("") }
+                    } else if model.state.pinnedOnly {
+                        Button("모든 메모 보기") { model.setPinnedOnly(false) }
+                    }
+                }
+            }
+        }
+    }
+
+    private var emptyListTitle: String {
+        if !model.state.query.isEmpty { return "검색 결과가 없어요" }
+        return model.state.pinnedOnly ? "고정한 메모가 없어요" : "아직 메모가 없어요"
+    }
+
+    @ViewBuilder
+    private func noteSection(_ title: String, notes: [Note]) -> some View {
+        if !notes.isEmpty {
+            Section(title) {
+                ForEach(notes, id: \.id) { note in
                     Button {
                         request(.select(note.id))
                     } label: {
@@ -164,7 +346,7 @@ struct NotesView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(model.activeID == note.id ? Theme.apricot : Color.clear)
+                    .listRowBackground(model.activeID == note.id ? Theme.apricot : Theme.ivory)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
                             request(.togglePin(note.id))
@@ -182,78 +364,38 @@ struct NotesView: View {
                         }
                     }
                 }
-            } header: {
-                HStack {
-                    Text(model.state.pinnedOnly ? "고정한 메모" : "모든 메모")
-                    Spacer()
-                    Text("\(model.visibleNotes.count)")
-                        .monospacedDigit()
-                }
-                .foregroundStyle(Theme.muted)
-            } footer: {
-                Label("메모는 이 기기에 저장돼요", systemImage: "lock")
-                    .foregroundStyle(Theme.muted)
             }
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
-        .background(Theme.cream)
-        .overlay {
-            if model.visibleNotes.isEmpty && !model.state.loadFailed {
-                ContentUnavailableView {
-                    Label(model.state.query.isEmpty ? "아직 메모가 없어요" : "검색 결과가 없어요", systemImage: "note.text")
-                } description: {
-                    Text(model.state.pinnedOnly ? "고정한 메모가 없어요. 고정 필터를 해제해 보세요." : "생각나는 순간 가볍게 적어두세요.")
-                } actions: {
-                    if !model.state.query.isEmpty {
-                        Button("검색 지우기") { model.setQuery("") }
-                    } else if model.state.pinnedOnly {
-                        Button("모든 메모 보기") { model.setPinnedOnly(false) }
-                    } else {
-                        Button("첫 메모 쓰기") { request(.create) }
-                    }
-                }
-            }
-        }
-        .searchable(text: Binding(get: { model.state.query }, set: { model.setQuery($0) }), prompt: "메모 검색")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    model.setPinnedOnly(!model.state.pinnedOnly)
-                } label: {
-                    Label("고정한 메모만 보기", systemImage: model.state.pinnedOnly ? "pin.fill" : "pin")
-                }
-                .accessibilityValue(model.state.pinnedOnly ? "켜짐" : "꺼짐")
-            }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Menu {
-                    Button("백업 내보내기", systemImage: "square.and.arrow.up") {
-                        backup = BackupDocument(content: model.exportBackup())
-                        exportContentType = .json
-                        let formatter = DateFormatter()
-                        formatter.locale = Locale(identifier: "en_US_POSIX")
-                        formatter.dateFormat = "yyyy-MM-dd"
-                        backupFilename = "memo-backup-\(formatter.string(from: Date()))"
-                        exporting = true
-                    }
+    }
+
+    private var settings: some View {
+        List {
+            Section("백업") {
+                Button("백업 내보내기", systemImage: "square.and.arrow.up", action: exportBackup)
                     .disabled(model.state.loadFailed)
-                    Button("백업 가져오기", systemImage: "square.and.arrow.down") {
-                        request(.beginImport)
-                    }
+                Button("백업 가져오기", systemImage: "square.and.arrow.down") { request(.beginImport) }
                     .disabled(model.state.loadFailed || model.state.saveFailed)
-                    Divider()
-                    if let privacyURL = URL(string: "https://dla3946gns.github.io/stillnote/aj-notes/") {
-                        Link(destination: privacyURL) {
-                            Label("개인정보처리방침", systemImage: "hand.raised")
-                        }
+            }
+            Section {
+                if let privacyURL = URL(string: "https://dla3946gns.github.io/stillnote/aj-notes/") {
+                    Link(destination: privacyURL) {
+                        Label("개인정보처리방침", systemImage: "hand.raised")
                     }
-                } label: {
-                    Label("더 보기", systemImage: "ellipsis")
                 }
-                Button("새 메모", systemImage: "square.and.pencil") { request(.create) }
-                    .disabled(model.state.loadFailed)
             }
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func exportBackup() {
+        backup = BackupDocument(content: model.exportBackup())
+        exportContentType = .json
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        backupFilename = "memo-backup-\(formatter.string(from: Date()))"
+        exporting = true
     }
 
     private func exportText(id: String) {
@@ -401,12 +543,22 @@ private struct NoteEditor: View {
                     model.cancel()
                     model.select(nil)
                 }
-                    .buttonStyle(.bordered)
+                .notesActionStyle()
                 Button("저장") {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     if model.save() { model.select(nil) }
                 }
-                    .buttonStyle(.borderedProminent)
+                .notesActionStyle(prominent: true)
+                Spacer(minLength: 0)
+                HStack(spacing: 0) {
+                    Button("본문 되돌리기", systemImage: "arrow.uturn.backward", action: undoBody)
+                        .disabled(bodyUndo.isEmpty)
+                    Button("본문 다시 실행", systemImage: "arrow.uturn.forward", action: redoBody)
+                        .disabled(bodyRedo.isEmpty)
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(EditHistoryButtonStyle())
+                .notesGlass(in: Capsule(), fallback: Theme.cream)
             }
 
             LimitedTitleField(text: Binding(
@@ -451,11 +603,6 @@ private struct NoteEditor: View {
                 }
                 .disabled(model.state.isNewNote)
                 Menu {
-                    Button("본문 되돌리기", systemImage: "arrow.uturn.backward", action: undoBody)
-                        .disabled(bodyUndo.isEmpty)
-                    Button("본문 다시 실행", systemImage: "arrow.uturn.forward", action: redoBody)
-                        .disabled(bodyRedo.isEmpty)
-                    Divider()
                     Button(copied ? "복사했어요" : "복사", systemImage: "doc.on.doc") {
                         UIPasteboard.general.string = model.text(id: noteID)
                         copied = true
@@ -479,6 +626,48 @@ private struct NoteEditor: View {
             Button("취소", role: .cancel) { }
         } message: {
             Text("삭제한 뒤 실행 취소로 복원할 수 있어요.")
+        }
+    }
+}
+
+private struct EditHistoryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: 48, height: 44)
+            .contentShape(Rectangle())
+            .opacity(isEnabled ? (configuration.isPressed ? 0.65 : 1) : 0.35)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func notesGlass<S: Shape, F: ShapeStyle>(
+        in shape: S,
+        fallback: F,
+        tint: Color? = nil,
+        interactive: Bool = false
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            background(fallback, in: shape)
+        }
+    }
+
+    @ViewBuilder
+    func notesActionStyle(prominent: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            if prominent {
+                buttonStyle(.glassProminent)
+            } else {
+                buttonStyle(.glass)
+            }
+        } else if prominent {
+            buttonStyle(.borderedProminent)
+        } else {
+            buttonStyle(.bordered)
         }
     }
 }

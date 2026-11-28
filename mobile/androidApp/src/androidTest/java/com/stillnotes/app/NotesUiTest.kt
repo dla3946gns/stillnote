@@ -274,16 +274,13 @@ class NotesUiTest {
 
         body.performTextReplacement("복구할 문단")
         body.performTextReplacement("남은 문장")
-        compose.onNodeWithContentDescription("메모 메뉴").performClick()
-        compose.onNodeWithText("본문 되돌리기").performClick()
+        compose.onNodeWithContentDescription("본문 되돌리기").performClick()
         body.assertTextContains("복구할 문단")
 
-        compose.onNodeWithContentDescription("메모 메뉴").performClick()
-        compose.onNodeWithText("본문 다시 실행").performClick()
+        compose.onNodeWithContentDescription("본문 다시 실행").performClick()
         body.assertTextContains("남은 문장")
 
-        compose.onNodeWithContentDescription("메모 메뉴").performClick()
-        compose.onNodeWithText("본문 되돌리기").performClick()
+        compose.onNodeWithContentDescription("본문 되돌리기").performClick()
         saveDraft()
         compose.onNodeWithText("편집 이력 테스트").performClick()
         body.assertTextContains("복구할 문단")
@@ -292,9 +289,8 @@ class NotesUiTest {
         compose.onNodeWithContentDescription("메모 고정").performClick()
         compose.onNodeWithText("버리기").performClick()
         body.assertTextContains("복구할 문단")
-        compose.onNodeWithContentDescription("메모 메뉴").performClick()
-        compose.onNodeWithText("본문 되돌리기").assertIsNotEnabled()
-        compose.onNodeWithText("본문 다시 실행").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("본문 되돌리기").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("본문 다시 실행").assertIsNotEnabled()
     }
 
     @Test
@@ -363,12 +359,8 @@ class NotesUiTest {
         saveNew("첫 번째 메모", "여행 계획")
         saveNew("둘째 메모", "커피 기록")
 
+        compose.onNodeWithText("검색").performClick()
         val search = compose.onNodeWithTag("notes-search").assertIsDisplayed()
-        assertTrue(
-            "Search should stay below the note list",
-            search.fetchSemanticsNode().boundsInRoot.top >
-                compose.onNodeWithText("둘째 메모").fetchSemanticsNode().boundsInRoot.bottom
-        )
         search.performTextInput("여행")
         compose.onNodeWithText("첫 번째 메모").assertExists()
         compose.onNodeWithText("둘째 메모").assertDoesNotExist()
@@ -399,6 +391,8 @@ class NotesUiTest {
         compose.onNodeWithContentDescription("메모 고정").performClick()
         compose.onNodeWithContentDescription("목록").performClick()
 
+        compose.onNodeWithText("고정된 메모").assertIsDisplayed()
+        compose.onNodeWithText("최근 메모").assertIsDisplayed()
         compose.onNodeWithContentDescription("고정 메모").performClick()
         compose.onNodeWithText("고정할 메모").assertIsDisplayed()
         compose.onNodeWithText("일반 메모").assertDoesNotExist()
@@ -426,10 +420,11 @@ class NotesUiTest {
 
     @Test
     fun searchAndEditorRemainUsableWithTheKeyboardOpen() {
+        compose.onNodeWithText("검색").performClick()
         // Regression for a collapsed UI with adjustResize and a visible IME.
         tapUntilKeyboardVisible("notes-search")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
-        compose.onNodeWithTag("notes-search").performTextInput("검색 키보드")
+        compose.onNodeWithTag("notes-search").performTextInput("키보드")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         captureKeyboardLayout("keyboard-list")
 
@@ -453,8 +448,8 @@ class NotesUiTest {
     }
 
     @Test
-    fun privacyPolicyIsReadableOfflineFromNotesMenu() {
-        compose.onNodeWithContentDescription("더보기").performClick()
+    fun privacyPolicyIsReadableOfflineFromSettings() {
+        compose.onNodeWithText("설정").performClick()
         compose.onNodeWithText("개인정보처리방침").performClick()
         compose.onNodeWithTag("privacy-policy-body").assertIsDisplayed()
         compose.onNodeWithTag("privacy-policy-body")
@@ -464,7 +459,9 @@ class NotesUiTest {
 
         compose.onNodeWithTag("privacy-policy-close").performClick()
         compose.onNodeWithTag("privacy-policy-body").assertDoesNotExist()
-        compose.onNodeWithTag("notes-search").assertIsDisplayed()
+        compose.onNodeWithText("백업 가져오기").assertIsDisplayed()
+        compose.onNodeWithText("홈").performClick()
+        compose.onNodeWithText("아직 메모가 없어요").assertIsDisplayed()
     }
 
     @Test

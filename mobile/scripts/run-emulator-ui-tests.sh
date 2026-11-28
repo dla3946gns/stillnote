@@ -4,6 +4,11 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# System crash and ANR dialogs can take window focus away from the app under
+# test (for example, when Pixel Launcher is busy after emulator startup).
+# Instrumentation still fails if the app process crashes or its checks fail.
+adb shell settings put global hide_error_dialogs 1 || exit 1
+
 # Headless emulator images may leave the IME service disabled or have no
 # default selected. That causes InsetsController.show(ime()) to fail at
 # PHASE_CLIENT_REQUEST_IME_SHOW even though the Compose text field has focus.

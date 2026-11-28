@@ -1,9 +1,15 @@
 package com.stillnotes.app
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -125,35 +131,17 @@ fun StillnoteApp(
         pendingAction = null
         action?.invoke()
     }
+    var destination by rememberSaveable { mutableStateOf(NotesDestination.Home) }
+    fun navigate(target: NotesDestination) {
+        if (target == destination) return
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        if (target != NotesDestination.Search) store.setQuery("")
+        destination = target
+    }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        snackbarHost = {
-            val message = model.platformMessage ?: state.message
-            if (message != null) {
-                Snackbar(
-                    modifier = Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    dismissAction = {
-                        TextButton(onClick = {
-                            model.platformMessage = null
-                            store.clearMessage()
-                        }) { Text("닫기", color = MaterialTheme.colorScheme.inversePrimary) }
-                    },
-                    action = {
-                        if (model.platformMessage == null && state.canUndoDelete) {
-                            TextButton(onClick = { requestAction { store.undoDelete() } }, enabled = !state.saveFailed) {
-                                Text("삭제 취소", color = MaterialTheme.colorScheme.inversePrimary)
-                            }
-                        } else {
-                            TextButton(onClick = {
-                                model.platformMessage = null
-                                store.clearMessage()
-                            }) { Text("확인", color = MaterialTheme.colorScheme.inversePrimary) }
-                        }
-                    }
-                ) { Text(message) }
-            }
-        }
     ) { padding ->
         // adjustResize already sizes the app's content above the IME. Applying
         // imePadding here as well on some devices collapses the weighted list/editor.
@@ -170,14 +158,21 @@ fun StillnoteApp(
             }
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                 val wide = maxWidth >= 840.dp
-                BackHandler(enabled = state.hasUnsavedChanges || (!wide && state.activeNote != null)) {
-                    requestAction { store.closeNote() }
+                BackHandler(enabled = state.hasUnsavedChanges || (!wide && state.activeNote != null) ||
+                    destination != NotesDestination.Home) {
+                    if (state.hasUnsavedChanges || (!wide && state.activeNote != null)) {
+                        requestAction { store.closeNote() }
+                    } else {
+                        navigate(NotesDestination.Home)
+                    }
                 }
                 Row(Modifier.fillMaxSize()) {
                     if (wide || state.activeNote == null) {
                         NotesList(
                             state = state,
                             modifier = if (wide) Modifier.width(320.dp) else Modifier.weight(1f),
+                            destination = destination,
+                            onNavigate = ::navigate,
                             onQuery = { store.setQuery(it) },
                             onPinnedOnly = { store.setPinnedOnly(it) },
                             onSelect = { id ->
@@ -231,6 +226,30 @@ fun StillnoteApp(
                         }
                     }
                 }
+            }
+            val message = model.platformMessage ?: state.message
+            if (message != null) {
+                Snackbar(
+                    modifier = Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    dismissAction = {
+                        TextButton(onClick = {
+                            model.platformMessage = null
+                            store.clearMessage()
+                        }) { Text("닫기", color = MaterialTheme.colorScheme.inversePrimary) }
+                    },
+                    action = {
+                        if (model.platformMessage == null && state.canUndoDelete) {
+                            TextButton(onClick = { requestAction { store.undoDelete() } }, enabled = !state.saveFailed) {
+                                Text("삭제 취소", color = MaterialTheme.colorScheme.inversePrimary)
+                            }
+                        } else {
+                            TextButton(onClick = {
+                                model.platformMessage = null
+                                store.clearMessage()
+                            }) { Text("확인", color = MaterialTheme.colorScheme.inversePrimary) }
+                        }
+                    }
+                ) { Text(message) }
             }
         }
     }
@@ -332,10 +351,19 @@ private fun StorageBanner(message: String, action: String, onAction: () -> Unit)
     }
 }
 
+private enum class NotesDestination(val label: String, val icon: Int) {
+    Home("홈", R.drawable.ic_notes_home),
+    Search("검색", R.drawable.ic_note_search),
+    Settings("설정", R.drawable.ic_notes_settings)
+}
+
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun NotesList(
     state: NotesState,
     modifier: Modifier,
+    destination: NotesDestination,
+    onNavigate: (NotesDestination) -> Unit,
     onQuery: (String) -> Unit,
     onPinnedOnly: (Boolean) -> Unit,
     onSelect: (String) -> Unit,
@@ -344,127 +372,168 @@ private fun NotesList(
     onImportBackup: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
+    val canCreate = !state.loadFailed && !state.saveFailed
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilledTonalIconToggleButton(checked = state.pinnedOnly, onCheckedChange = onPinnedOnly) {
-                Icon(painterResource(R.drawable.ic_pin_note), contentDescription = "고정 메모")
-            }
-            NotesToolbar {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(painterResource(R.drawable.ic_notes_more), contentDescription = "더보기")
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("전체 메모 백업") }, onClick = {
-                            menuOpen = false
-                            onExportBackup()
-                        }, enabled = !state.loadFailed)
-                        DropdownMenuItem(text = { Text("백업 가져오기") }, onClick = {
-                            menuOpen = false
-                            onImportBackup()
-                        }, enabled = !state.loadFailed && !state.saveFailed)
-                        HorizontalDivider()
-                        DropdownMenuItem(text = { Text("개인정보처리방침") }, onClick = {
-                            menuOpen = false
-                            onOpenPrivacyPolicy()
-                        })
-                    }
-                }
-                IconButton(onClick = onCreate, enabled = !state.saveFailed && !state.loadFailed) {
-                    Icon(painterResource(R.drawable.ic_compose_note), contentDescription = "새 메모")
-                }
-            }
-        }
-        Text(
-            stringResource(R.string.app_name),
-            Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(if (state.pinnedOnly) "고정한 메모" else "모든 메모",
-                style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${state.visibleNotes.size}개", style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (state.visibleNotes.isEmpty()) {
-            Column(
-                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(if (state.query.isNotEmpty()) "검색 결과가 없어요" else if (state.pinnedOnly) "고정한 메모가 없어요" else "아직 메모가 없어요",
-                    style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text(if (state.query.isNotEmpty()) "다른 검색어로 찾아보세요." else "새 메모로 첫 생각을 남겨보세요.",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(state.visibleNotes, key = { it.id }) { note ->
-                    Surface(
-                        onClick = { onSelect(note.id) },
-                        color = if (state.activeNote?.id == note.id) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().semantics { selected = state.activeNote?.id == note.id }
-                    ) {
-                        Column(Modifier.padding(14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(note.displayTitle, Modifier.weight(1f), maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
-                                if (note.pinned) Text("고정", Modifier.padding(start = 8.dp),
-                                    color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
-                            }
-                            Text(note.excerpt, Modifier.padding(top = 6.dp), maxLines = 2,
-                                overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
-                            Text(dateLabel(note.updatedAt), Modifier.padding(top = 8.dp),
-                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        AnimatedContent(
+            targetState = destination,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },
+            label = "notes destination"
+        ) { page ->
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 16.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        when (page) {
+                            NotesDestination.Home -> stringResource(R.string.app_name)
+                            NotesDestination.Search -> "메모 찾기"
+                            NotesDestination.Settings -> "앱 설정"
+                        },
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (page != NotesDestination.Settings) {
+                        FilledTonalIconToggleButton(checked = state.pinnedOnly, onCheckedChange = onPinnedOnly) {
+                            Icon(painterResource(R.drawable.ic_pin_note), contentDescription = "고정 메모")
                         }
                     }
                 }
-                item {
-                    Text(
-                        "메모는 이 기기에 저장돼요",
-                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (page == NotesDestination.Settings) {
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+                        Text("백업", style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                        TextButton(onClick = onExportBackup, enabled = !state.loadFailed) { Text("전체 메모 백업") }
+                        TextButton(onClick = onImportBackup, enabled = canCreate) { Text("백업 가져오기") }
+                        HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                        TextButton(onClick = onOpenPrivacyPolicy) { Text("개인정보처리방침") }
+                    }
+                } else {
+                    if (page == NotesDestination.Search) NotesSearchField(state, onQuery)
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        NotesFeed(state, grouped = page == NotesDestination.Home, onSelect = onSelect)
+                        if (canCreate) FloatingActionButton(
+                            onClick = onCreate,
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(painterResource(R.drawable.ic_compose_note), contentDescription = "새 메모")
+                        }
+                    }
                 }
             }
         }
-        TextField(
-            value = state.query,
-            onValueChange = onQuery,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("notes-search"),
-            placeholder = { Text("메모 검색") },
-            singleLine = true,
-            shape = CircleShape,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            leadingIcon = { Icon(painterResource(R.drawable.ic_note_search), contentDescription = null) },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-            trailingIcon = {
-                if (state.query.isNotEmpty()) TextButton(onClick = { onQuery("") }) { Text("지우기") }
+        if (!WindowInsets.isImeVisible) NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+            NotesDestination.entries.forEach { page ->
+                NavigationBarItem(
+                    selected = destination == page,
+                    onClick = { onNavigate(page) },
+                    icon = { Icon(painterResource(page.icon), contentDescription = null) },
+                    label = { Text(page.label) }
+                )
             }
-        )
+        }
     }
+}
+
+@Composable
+private fun NotesFeed(state: NotesState, grouped: Boolean, onSelect: (String) -> Unit) {
+    val notes = state.visibleNotes
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 88.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (notes.isEmpty()) {
+            item {
+                Text("0개", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (!state.loadFailed) {
+                item {
+                    val message = when {
+                        state.query.isNotEmpty() -> "검색 결과가 없어요"
+                        state.pinnedOnly -> "고정한 메모가 없어요"
+                        else -> "아직 메모가 없어요"
+                    }
+                    Text(message, Modifier.padding(vertical = 16.dp), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        } else if (grouped) {
+            noteSection("고정된 메모", notes.filter { it.pinned }, state.activeNote?.id, onSelect)
+            noteSection("최근 메모", notes.filterNot { it.pinned }, state.activeNote?.id, onSelect)
+        } else {
+            noteSection("검색 결과", notes, state.activeNote?.id, onSelect)
+        }
+    }
+}
+
+private fun LazyListScope.noteSection(
+    title: String,
+    notes: List<Note>,
+    activeId: String?,
+    onSelect: (String) -> Unit
+) {
+    if (notes.isEmpty()) return
+    item(key = title) {
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text("${notes.size}개", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    items(notes, key = { it.id }) { note ->
+        val isActive = activeId == note.id
+        Surface(
+            onClick = { onSelect(note.id) },
+            color = if (isActive) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().semantics { selected = isActive }
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(note.displayTitle, Modifier.weight(1f), maxLines = 2,
+                        overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+                    if (note.pinned) Text("고정", Modifier.padding(start = 8.dp),
+                        color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                }
+                Text(note.excerpt, Modifier.padding(top = 6.dp), maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
+                Text(dateLabel(note.updatedAt), Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotesSearchField(state: NotesState, onQuery: (String) -> Unit) {
+    val focusManager = LocalFocusManager.current
+    TextField(
+        value = state.query,
+        onValueChange = onQuery,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).testTag("notes-search"),
+        placeholder = { Text("메모 검색") },
+        singleLine = true,
+        shape = CircleShape,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent
+        ),
+        leadingIcon = { Icon(painterResource(R.drawable.ic_note_search), contentDescription = null) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        trailingIcon = {
+            if (state.query.isNotEmpty()) TextButton(onClick = { onQuery("") }) { Text("지우기") }
+        }
+    )
 }
 
 private class NoteEditorFields(val title: TextFieldState, val body: TextFieldState)
@@ -524,17 +593,6 @@ private fun NoteEditor(
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         fun closeAnd(action: () -> Unit) { menuOpen = false; action() }
-                        DropdownMenuItem(
-                            text = { Text("본문 되돌리기") },
-                            onClick = { closeAnd(bodyHistory::undo) },
-                            enabled = bodyHistory.canUndo
-                        )
-                        DropdownMenuItem(
-                            text = { Text("본문 다시 실행") },
-                            onClick = { closeAnd(bodyHistory::redo) },
-                            enabled = bodyHistory.canRedo
-                        )
-                        HorizontalDivider()
                         DropdownMenuItem(text = { Text("메모 복제") }, onClick = { closeAnd(onDuplicate) }, enabled = canChange)
                         DropdownMenuItem(text = { Text("내용 복사") }, onClick = { closeAnd(onCopy) })
                         DropdownMenuItem(text = { Text("공유") }, onClick = { closeAnd(onShare) })
@@ -557,10 +615,22 @@ private fun NoteEditor(
         }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             FilledTonalButton(onClick = onCancel) { Text("취소") }
             Button(onClick = onSave, enabled = !state.loadFailed) { Text("저장") }
+            Spacer(Modifier.weight(1f))
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                Row {
+                    IconButton(onClick = bodyHistory::undo, enabled = bodyHistory.canUndo) {
+                        Icon(painterResource(R.drawable.ic_notes_undo), contentDescription = "본문 되돌리기")
+                    }
+                    IconButton(onClick = bodyHistory::redo, enabled = bodyHistory.canRedo) {
+                        Icon(painterResource(R.drawable.ic_notes_redo), contentDescription = "본문 다시 실행")
+                    }
+                }
+            }
         }
         // Allow the entire editor (including title) to scroll when the IME or
         // accessibility text size leaves less vertical space for composing.

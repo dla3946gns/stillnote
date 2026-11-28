@@ -1,0 +1,108 @@
+name: AJ Notes demo recordings
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/mobile-demo.yml
+      - .github/demo/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  DEMO_BUILD_SHA: a6b7b8ed19e431e890231a35ddd8be5c040d5d0e
+  MAESTRO_CLI_NO_ANALYTICS: 'true'
+
+jobs:
+  android-video:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 44
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify the Android source and prior CI result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh run view 45948710536 --json headSha,conclusion --jq '.headSha + ":" + .conclusion')" = "$DEMO_BUILD_SHA:success"
+          git fetch --depth=1 origin "$DEMO_BUILD_SHA"
+          git diff --exit-code "$DEMO_BUILD_SHA" HEAD -- mobile
+      - name: Build the Android recording instrumentation APK
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$(find "$sdk_root/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$sdkmanager"
+          "$sdkmanager" --sdk_root="$sdk_root" "platforms;android-37.0" "platforms;android-37.1" "build-tools;36.0.0"
+          cp .github/demo/RecordedNotesUiTest.kt mobile/androidApp/src/androidTest/java/com/stillnotes/app/
+          cd mobile
+          bash ./gradlew :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Record Android flow on a Pixel emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          script: bash .github/demo/record.sh android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aj-notes-android-demo
+          path: ${{ runner.temp }}/aj-notes-demo/AJ-Notes-Android.mp4
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: aj-notes-android-recording-debug
+          path: ${{ runner.temp }}/aj-notes-demo/debug-*
+          if-no-files-found: ignore
+
+  ios-video:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 44
+    runs-on: xcode-27
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Get the verified simulator app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh run view 45948710561 --json headSha,conclusion --jq '.headSha + ":" + .conclusion')" = "$DEMO_BUILD_SHA:success"
+          gh run download 45948710561 --name stillnote-ios-simulator-qa --dir "$RUNNER_TEMP/aj-notes-build"
+          ditto -x -k "$RUNNER_TEMP/aj-notes-build/Stillnote-iOS-Simulator.zip" "$RUNNER_TEMP/aj-notes-build"
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Record iOS flow on an iPhone simulator
+        run: bash .github/demo/record.sh ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aj-notes-ios-demo
+          path: ${{ runner.temp }}/aj-notes-demo/AJ-Notes-iOS.mp4
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: aj-notes-ios-recording-debug
+          path: ${{ runner.temp }}/aj-notes-demo/debug-*
+          if-no-files-found: ignore
