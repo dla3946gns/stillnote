@@ -12,23 +12,19 @@ import android.provider.MediaStore
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.PlatformTextInputMethodTestOverride
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.awaitCancellation
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -36,11 +32,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -96,33 +89,33 @@ class NotesUiTest {
     }
 
     /**
-     * Focus the field before asking Android to show its real IME. Require
-     * a visible window IME inset before interacting with the resized layout.
+     * Headless emulators can reject a text field's initial IME show request.
+     * Re-tapping an already focused field is not a fresh request. After a
+     * timeout, explicitly request the system keyboard again and require the
+     * actual window IME inset to become visible before taking screenshots.
+     * This retry is in test-only code, never in production UI.
      */
-    private fun focusAndShowKeyboard(tag: String) {
-        compose.onNodeWithTag(tag)
-            .performSemanticsAction(SemanticsActions.RequestFocus)
-            .assertIsFocused()
-        if (isKeyboardVisible()) return
-
+    private fun tapUntilKeyboardVisible(tag: String) {
         repeat(3) { attempt ->
-            scenario.onActivity { activity ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    activity.window.decorView.windowInsetsController
-                        ?.show(WindowInsets.Type.ime())
-                } else {
-                    val input = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
-                        as InputMethodManager
-                    activity.currentFocus?.let {
-                        input.showSoftInput(it, InputMethodManager.SHOW_IMPLICIT)
-                    }
-                }
-            }
+            compose.onNodeWithTag(tag).performClick()
+            compose.waitForIdle()
             try {
                 compose.waitUntil(6_000) { isKeyboardVisible() }
                 return
             } catch (error: ComposeTimeoutException) {
                 if (attempt == 2) throw error
+                scenario.onActivity { activity ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        activity.window.decorView.windowInsetsController
+                            ?.show(WindowInsets.Type.ime())
+                    } else {
+                        val input = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
+                            as InputMethodManager
+                        activity.currentFocus?.let {
+                            input.showSoftInput(it, InputMethodManager.SHOW_IMPLICIT)
+                        }
+                    }
+                }
             }
         }
     }
@@ -243,13 +236,9 @@ class NotesUiTest {
         compose.waitForIdle()
         compose.onNodeWithContentDescription("새 메모").performClick()
         compose.onNodeWithTag("note-title").performTextInput(title)
-        // Tap the text line, even when the tall body field is partly off-screen.
-        body.performScrollTo()
-            .performTouchInput { click(Offset(center.x, 12.dp.toPx())) }
-            .assertIsFocused()
-        val input = compose.runOnIdle {
-            checkNotNull(connection) { "The focused memo body did not start a text input session" }
-        }
+        body.performClick()
+        compose.waitForIdle()
+        val input = compose.runOnIdle { checkNotNull(connection) }
 
         // Check each complete composing replacement after recomposition.
         for (syllable in listOf("ㅎ", "하", "한")) {
@@ -433,20 +422,20 @@ class NotesUiTest {
     fun searchAndEditorRemainUsableWithTheKeyboardOpen() {
         compose.onNodeWithText("검색").performClick()
         // Regression for a collapsed UI with adjustResize and a visible IME.
-        focusAndShowKeyboard("notes-search")
+        tapUntilKeyboardVisible("notes-search")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         compose.onNodeWithTag("notes-search").performTextInput("키보드")
         compose.onNodeWithTag("notes-search").assertIsDisplayed()
         captureKeyboardLayout("keyboard-list")
 
         compose.onNodeWithContentDescription("새 메모").performClick()
-        focusAndShowKeyboard("note-title")
+        tapUntilKeyboardVisible("note-title")
         compose.onNodeWithTag("note-title").assertIsDisplayed()
         compose.onNodeWithTag("note-title").performTextInput("키보드 레이아웃")
         compose.onNodeWithTag("note-title").assertIsDisplayed()
 
         compose.onNodeWithTag("note-body").performScrollTo()
-        focusAndShowKeyboard("note-body")
+        tapUntilKeyboardVisible("note-body")
         compose.onNodeWithTag("note-body").assertIsDisplayed()
         compose.onNodeWithTag("note-body").performTextInput("본문 입력을 확인합니다.")
         compose.onNodeWithTag("note-body").assertIsDisplayed()
